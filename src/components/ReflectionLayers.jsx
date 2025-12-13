@@ -39,13 +39,14 @@ export default function ReflectionLayers({
       // - Dimmer (opacity/intensity)
       // - Less saturated
       const zOffset = -i * layerSpacing
-      const dimFactor = Math.pow(0.7, i) // Exponential dimming
-      const saturationFactor = Math.pow(0.85, i)
+      const dimFactor = Math.pow(0.75, i) // Exponential dimming (less aggressive)
+      const saturationFactor = Math.pow(0.9, i) // Less desaturation
 
       // Convert hex color to RGB, reduce saturation
       const c = new THREE.Color(color)
       const hsl = {}
       c.getHSL(hsl)
+      // Keep saturation high, only adjust lightness
       c.setHSL(hsl.h, hsl.s * saturationFactor, hsl.l * dimFactor)
 
       layerArray.push({
@@ -53,7 +54,8 @@ export default function ReflectionLayers({
         position: [position[0], position[1], position[2] + zOffset],
         color: '#' + c.getHexString(),
         opacity: dimFactor,
-        scale: scale * (1 - i * 0.02) // Slight perspective scaling
+        scale: scale * (1 - i * 0.02), // Slight perspective scaling
+        layerIndex: i // Pass layer index to control emissive intensity
       })
     }
 
@@ -73,6 +75,7 @@ export default function ReflectionLayers({
             rotation={rotation}
             position={[0, 0, 0]}
             edgeThickness={edgeThickness}
+            layerIndex={layer.layerIndex}
           />
           {/* Glow plane removed temporarily for debugging */}
         </group>

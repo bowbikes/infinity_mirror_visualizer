@@ -74,6 +74,7 @@ function App() {
     const parseError = svgDoc.querySelector('parsererror')
     if (parseError) {
       console.error('SVG parsing error:', parseError)
+      alert('SVG parsing error. Please check the file format.')
       return
     }
 
@@ -83,8 +84,8 @@ function App() {
     setShapeType('custom')
     setSelectedPreset('custom')
 
-    // Default to stroke mode for custom SVGs as it works better for complex line-based geometries
-    setSvgRenderMode('stroke')
+    // Keep outline mode as default for custom SVGs
+    // User can manually switch to stroke mode if needed via the controls
   }
 
   // Convert rotation from degrees to radians for Three.js
