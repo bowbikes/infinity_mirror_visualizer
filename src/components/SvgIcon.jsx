@@ -18,7 +18,8 @@ export default function SvgIcon({
   scale = 1,
   rotation = 0,
   position = [0, 0, 0],
-  edgeThickness = 0.2
+  edgeThickness = 0.2,
+  layerIndex = 0
 }) {
 
   // Create extruded outline geometry
@@ -83,11 +84,11 @@ export default function SvgIcon({
         const useStrokeRendering = (hasStroke && !hasFill) || svgRenderMode === 'stroke'
 
         if (useStrokeRendering) {
-          // Stroke rendering - create tubes ONLY for line-based SVGs
+          // Stroke rendering - create simple flat rectangles for each line segment
           const geometries = []
 
-          svgData.paths.forEach((path, pathIndex) => {
-            path.subPaths.forEach((subPath, subIndex) => {
+          svgData.paths.forEach((path) => {
+            path.subPaths.forEach((subPath) => {
               const points = subPath.getPoints()
               if (points.length < 2) return
 
@@ -98,129 +99,66 @@ export default function SvgIcon({
                 0
               ))
 
-              // For polylines (≤10 points), create flat rectangular strips for each segment
-              // For smooth curves (>10 points), create outline using extrusion
-              if (transformedPoints.length <= 10) {
-                // Polyline - create flat rectangular strips for each line segment
-                for (let i = 0; i < transformedPoints.length - 1; i++) {
-                  const start = transformedPoints[i]
-                  const end = transformedPoints[i + 1]
+              // Create flat rectangular strips for each line segment
+              const halfWidth = edgeThickness * 0.5
 
-                  // Calculate perpendicular offset for the line width
-                  const dx = end.x - start.x
-                  const dy = end.y - start.y
-                  const length = Math.sqrt(dx * dx + dy * dy)
+              for (let i = 0; i < transformedPoints.length - 1; i++) {
+                const start = transformedPoints[i]
+                const end = transformedPoints[i + 1]
 
-                  if (length < 0.001) continue // Skip zero-length segments
+                // Calculate perpendicular direction for line width
+                const dx = end.x - start.x
+                const dy = end.y - start.y
+                const length = Math.sqrt(dx * dx + dy * dy)
 
-                  // Perpendicular direction (rotated 90 degrees)
-                  const perpX = -dy / length
-                  const perpY = dx / length
+                if (length < 0.001) continue // Skip zero-length segments
 
-                  const halfWidth = edgeThickness * 0.5
+                // Perpendicular direction (rotated 90 degrees in 2D)
+                const perpX = -dy / length
+                const perpY = dx / length
 
-                  // Create 4 corners of the rectangle
-                  const p1 = new THREE.Vector3(start.x + perpX * halfWidth, start.y + perpY * halfWidth, 0)
-                  const p2 = new THREE.Vector3(start.x - perpX * halfWidth, start.y - perpY * halfWidth, 0)
-                  const p3 = new THREE.Vector3(end.x - perpX * halfWidth, end.y - perpY * halfWidth, 0)
-                  const p4 = new THREE.Vector3(end.x + perpX * halfWidth, end.y + perpY * halfWidth, 0)
+                // Create rectangular geometry for this segment using BufferGeometry
+                const positions = new Float32Array([
+                  // Triangle 1
+                  start.x + perpX * halfWidth, start.y + perpY * halfWidth, 0,
+                  start.x - perpX * halfWidth, start.y - perpY * halfWidth, 0,
+                  end.x - perpX * halfWidth, end.y - perpY * halfWidth, 0,
+                  // Triangle 2
+                  start.x + perpX * halfWidth, start.y + perpY * halfWidth, 0,
+                  end.x - perpX * halfWidth, end.y - perpY * halfWidth, 0,
+                  end.x + perpX * halfWidth, end.y + perpY * halfWidth, 0
+                ])
 
-                  // Create shape for this line segment
-                  const lineShape = new THREE.Shape()
-                  lineShape.moveTo(p1.x, p1.y)
-                  lineShape.lineTo(p2.x, p2.y)
-                  lineShape.lineTo(p3.x, p3.y)
-                  lineShape.lineTo(p4.x, p4.y)
-                  lineShape.closePath()
+                const segmentGeometry = new THREE.BufferGeometry()
+                segmentGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+                segmentGeometry.computeVertexNormals()
 
-                  geometries.push(new THREE.ShapeGeometry(lineShape))
-                }
-              } else {
-                // Smooth curve - create outline by offsetting the path
-                // Convert to 2D points for shape creation
-                const points2D = transformedPoints.map(p => new THREE.Vector2(p.x, p.y))
-
-                // Create offset paths for inner and outer edges
-                const halfWidth = edgeThickness * 0.5
-                const outerPoints = []
-                const innerPoints = []
-
-                for (let i = 0; i < points2D.length; i++) {
-                  const prevIdx = (i - 1 + points2D.length) % points2D.length
-                  const nextIdx = (i + 1) % points2D.length
-
-                  const prev = points2D[prevIdx]
-                  const curr = points2D[i]
-                  const next = points2D[nextIdx]
-
-                  // Calculate average perpendicular direction
-                  const dx1 = curr.x - prev.x
-                  const dy1 = curr.y - prev.y
-                  const len1 = Math.sqrt(dx1 * dx1 + dy1 * dy1) || 1
-
-                  const dx2 = next.x - curr.x
-                  const dy2 = next.y - curr.y
-                  const len2 = Math.sqrt(dx2 * dx2 + dy2 * dy2) || 1
-
-                  // Average perpendicular
-                  const perpX = (-dy1 / len1 - dy2 / len2) * 0.5
-                  const perpY = (dx1 / len1 + dx2 / len2) * 0.5
-                  const perpLen = Math.sqrt(perpX * perpX + perpY * perpY) || 1
-
-                  outerPoints.push(new THREE.Vector2(
-                    curr.x + (perpX / perpLen) * halfWidth,
-                    curr.y + (perpY / perpLen) * halfWidth
-                  ))
-                  innerPoints.push(new THREE.Vector2(
-                    curr.x - (perpX / perpLen) * halfWidth,
-                    curr.y - (perpY / perpLen) * halfWidth
-                  ))
-                }
-
-                // Create shape with outer path and inner hole
-                const curveShape = new THREE.Shape(outerPoints)
-                if (subPath.closed) {
-                  curveShape.holes.push(new THREE.Path(innerPoints))
-                }
-
-                geometries.push(new THREE.ShapeGeometry(curveShape))
+                geometries.push(segmentGeometry)
               }
             })
           })
 
-          console.log(`Created ${geometries.length} tube geometries`)
-
-          // Don't add filled shapes in stroke mode - it creates unwanted geometry
-          // Stroke mode is ONLY for line-based SVGs (snowflakes, wireframes)
+          console.log(`Created ${geometries.length} line segment geometries`)
 
           if (geometries.length === 0) {
             return createFallbackGeometry()
           }
 
-          // Merge all geometries
-          if (geometries.length === 1) {
-            return geometries[0]
-          } else {
-            const mergedGeometry = new THREE.BufferGeometry()
-            const mergedPositions = []
-            const mergedNormals = []
+          // Merge all geometries efficiently
+          const mergedGeometry = new THREE.BufferGeometry()
+          const mergedPositions = []
 
-            geometries.forEach(geo => {
-              const positions = geo.attributes.position.array
-              const normals = geo.attributes.normal?.array
-
-              for (let i = 0; i < positions.length; i++) {
-                mergedPositions.push(positions[i])
-                if (normals) mergedNormals.push(normals[i])
-              }
-            })
-
-            mergedGeometry.setAttribute('position', new THREE.Float32BufferAttribute(mergedPositions, 3))
-            if (mergedNormals.length > 0) {
-              mergedGeometry.setAttribute('normal', new THREE.Float32BufferAttribute(mergedNormals, 3))
+          geometries.forEach(geo => {
+            const positions = geo.attributes.position.array
+            for (let i = 0; i < positions.length; i++) {
+              mergedPositions.push(positions[i])
             }
-            return mergedGeometry
-          }
+          })
+
+          mergedGeometry.setAttribute('position', new THREE.Float32BufferAttribute(mergedPositions, 3))
+          mergedGeometry.computeVertexNormals()
+
+          return mergedGeometry
         } else {
           // Fill rendering - use even-odd winding for proper hole handling
           let allShapes = []
@@ -277,14 +215,19 @@ export default function SvgIcon({
             }
 
             if (svgRenderMode === 'outline') {
-              // Create outline by extruding the shape
+              // For outline mode, use THREE's ExtrudeGeometry with bevelEnabled to create strokes
+              // This gives us clean, consistent strokes without manual offset calculations
               const extrudeSettings = {
-                depth: edgeThickness,
-                bevelEnabled: false
+                depth: 0.01,  // Minimal Z depth
+                bevelEnabled: true,
+                bevelThickness: edgeThickness * 0.05,  // Controls stroke width
+                bevelSize: edgeThickness * 0.05,
+                bevelSegments: 1
               }
+
               geometries.push(new THREE.ExtrudeGeometry(fillShape, extrudeSettings))
             } else {
-              // Simple flat fill
+              // Fill mode: show the filled shape
               geometries.push(new THREE.ShapeGeometry(fillShape))
             }
           })
@@ -425,10 +368,75 @@ export default function SvgIcon({
     return new THREE.ShapeGeometry(outerShape)
   }, [shapeType, customSvgPath, svgRenderMode, edgeThickness])
 
+  // Calculate emissive intensity based on color hue
+  // Only the FIRST layer (layerIndex === 0) should be emissive
+  // All reflection layers should be non-emissive
+  const emissiveIntensity = useMemo(() => {
+  if (layerIndex !== 0) return 0
+
+  // --- tuning knobs ---
+  const intensity_factor = 0.80
+
+  const minIntensity = 2.5
+
+  const peakBoost = 9.0
+  const peakSigmaDeg = 40.0
+
+  // soften the dip so 44–70° isn't overly dim
+  const dipBoost = 1.4       // was ~2.5
+  const dipSigmaDeg = 35.0   // was ~25 (wider + shallower)
+
+  // optional: gently lift reds so 324–30 stays consistent
+  const redLiftBoost = 1.75
+  const redLiftSigmaDeg = 55.0
+
+  // lightness handling
+  const dark_boost = 16.67
+  const light_reduce = 0.88  // was 0.7 (less aggressive)
+
+  const c = new THREE.Color(color)
+  const hsl = {}
+  c.getHSL(hsl)
+
+  const hueDeg = ((hsl.h * 360) % 360 + 360) % 360
+
+  const circDist = (a, b) => {
+    const d = Math.abs(a - b)
+    return Math.min(d, 360 - d) // always 0..180
+  }
+
+  const gaussian = (dist, sigma) => Math.exp(-0.5 * (dist / sigma) * (dist / sigma))
+
+  const d240 = circDist(hueDeg, 240)
+  const d60  = circDist(hueDeg, 60)
+  const d0   = circDist(hueDeg, 0)
+
+  const peak = peakBoost * gaussian(d240, peakSigmaDeg)
+  const dip  = dipBoost  * gaussian(d60,  dipSigmaDeg)
+  const redLift = redLiftBoost * gaussian(d0, redLiftSigmaDeg)
+
+  let baseIntensity = minIntensity + peak + redLift - dip
+
+  if (hsl.l < 0.3) {
+    baseIntensity += (0.3 - hsl.l) * dark_boost
+  } else if (hsl.l > 0.7) {
+    baseIntensity *= light_reduce
+  }
+
+  baseIntensity = Math.max(0, baseIntensity)
+  return baseIntensity * intensity_factor
+}, [color, layerIndex])
+
   return (
     <group position={position} rotation={[0, 0, rotation]} scale={scale}>
       <mesh geometry={outlineGeometry}>
-        <meshBasicMaterial color={color} side={THREE.DoubleSide} />
+        <meshStandardMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={emissiveIntensity}
+          side={THREE.DoubleSide}
+          toneMapped={false}
+        />
       </mesh>
     </group>
   )

@@ -78,7 +78,6 @@ export default function InfinityMirrorScene({
       <ambientLight intensity={0.5} />
       <directionalLight position={[5, 5, 5]} intensity={1.0} />
       <directionalLight position={[-5, 5, 5]} intensity={0.6} />
-      <pointLight position={[0, 0, 10]} intensity={0.5} color="#ffffff" />
 
       {/* Wall behind the mirror - 4 rectangles around the frame opening */}
       {/* Top section */}

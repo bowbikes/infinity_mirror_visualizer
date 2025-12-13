@@ -46,6 +46,18 @@ export default function InfinityMirrorBox({
   // Front mirror position
   const frontMirrorZ = innerMirrorZ + spacing
 
+  // Calculate taper angle for clipping planes
+  // Reflections scale by (1 - i * 0.02) per layer, with layerSpacing = spacing * 2
+  // Scale reduction per unit depth = 0.02 / (spacing * 2)
+  // Taper angle in radians
+  const scaleReductionPerLayer = 0.02
+  const layerSpacing = spacing * 2
+  const scaleReductionPerUnitDepth = scaleReductionPerLayer / layerSpacing
+  const taperAngle = Math.atan(scaleReductionPerUnitDepth)
+
+  // Multiplier to fine-tune the taper angle
+  const taperMultiple = 12.5
+
   return (
     <group ref={boxRef}>
       {/* Frame border - creates 1 unit border around mirror */}
@@ -139,6 +151,42 @@ export default function InfinityMirrorBox({
           side={THREE.DoubleSide}
         />
       </mesh>
+
+      {/* Black clipping planes to mask reflections outside the frame */}
+      {/* These extend deep into -Z and are angled inward to match the perspective scaling */}
+      {/* Each plane is in a group that rotates around the frame edge (front of box) */}
+
+      {/* Top clipping plane - rotated inward around X axis from front edge */}
+      <group position={[0, height / 2 - 1, totalDepth + 0.1]} rotation={[-taperMultiple*taperAngle, 0, 0]}>
+        <mesh position={[0, 0, -50 - (totalDepth + 0.1)]}>
+          <boxGeometry args={[width, 1, 100]} />
+          <meshBasicMaterial color="#000000" side={THREE.DoubleSide} />
+        </mesh>
+      </group>
+
+      {/* Bottom clipping plane - rotated inward around X axis from front edge */}
+      <group position={[0, -height / 2 + 1, totalDepth + 0.1]} rotation={[taperMultiple*taperAngle, 0, 0]}>
+        <mesh position={[0, 0, -50 - (totalDepth + 0.1)]}>
+          <boxGeometry args={[width, 1, 100]} />
+          <meshBasicMaterial color="#000000" side={THREE.DoubleSide} />
+        </mesh>
+      </group>
+
+      {/* Left clipping plane - rotated inward around Y axis from front edge */}
+      <group position={[-width / 2 + 1, 0, totalDepth + 0.1]} rotation={[0, -taperMultiple*taperAngle, 0]}>
+        <mesh position={[0, 0, -50 - (totalDepth + 0.1)]}>
+          <boxGeometry args={[1, height - 2, 100]} />
+          <meshBasicMaterial color="#000000" side={THREE.DoubleSide} />
+        </mesh>
+      </group>
+
+      {/* Right clipping plane - rotated inward around Y axis from front edge */}
+      <group position={[width / 2 - 1, 0, totalDepth + 0.1]} rotation={[0, taperMultiple*taperAngle, 0]}>
+        <mesh position={[0, 0, -50 - (totalDepth + 0.1)]}>
+          <boxGeometry args={[1, height - 2, 100]} />
+          <meshBasicMaterial color="#000000" side={THREE.DoubleSide} />
+        </mesh>
+      </group>
     </group>
   )
 }
