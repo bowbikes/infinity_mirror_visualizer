@@ -25,6 +25,12 @@ export default function ControlsPanel({
   onFrameColorChange,
   lightColor,
   onLightColorChange,
+  frameWidth,
+  onFrameWidthChange,
+  frameHeight,
+  onFrameHeightChange,
+  units,
+  onUnitsChange,
   mirrorSpacing,
   onMirrorSpacingChange,
   iconScale,
@@ -40,9 +46,27 @@ export default function ControlsPanel({
   reflectionDepth,
   onReflectionDepthChange,
   autoOrbit,
-  onAutoOrbitChange
+  onAutoOrbitChange,
+  onExportClick
 }) {
   const [uploadError, setUploadError] = useState(null)
+
+  // Helper function to determine text color based on background brightness
+  const getContrastColor = (hexColor) => {
+    // Remove # if present
+    const hex = hexColor.replace('#', '')
+
+    // Convert to RGB
+    const r = parseInt(hex.substr(0, 2), 16)
+    const g = parseInt(hex.substr(2, 2), 16)
+    const b = parseInt(hex.substr(4, 2), 16)
+
+    // Calculate relative luminance
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+
+    // Return black for light colors, white for dark colors
+    return luminance > 0.5 ? '#000000' : '#ffffff'
+  }
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0]
@@ -186,18 +210,78 @@ export default function ControlsPanel({
         </div>
       </div>
 
-      {/* Mirror Spacing */}
+      {/* Frame Controls */}
       <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Mirror Spacing</h3>
+        <h3 style={styles.sectionTitle}>Frame Controls</h3>
+
         <div style={styles.control}>
-          <label style={styles.label}>Spacing: {mirrorSpacing}mm</label>
+          <label style={styles.label}>
+            <input
+              type="checkbox"
+              checked={units === "in"}
+              onChange={(e) =>
+                onUnitsChange(e.target.checked ? "in" : "mm")
+              }
+              style={styles.checkbox}
+            />
+            Use inches
+          </label>
+        </div>
+
+
+        <div style={styles.control}>
+          <label style={styles.label}>
+            Width: {units === 'mm' ? `${frameWidth}mm` : `${(frameWidth / 25.4).toFixed(2)}in`}
+          </label>
           <input
             type="range"
-            min="10"
-            max="60"
-            step="1"
+            min="100"
+            max="600"
+            step="10"
+            value={frameWidth}
+            onChange={(e) => onFrameWidthChange(Number(e.target.value))}
+            style={styles.slider}
+          />
+        </div>
+
+        <div style={styles.control}>
+          <label style={styles.label}>
+            Height: {units === 'mm' ? `${frameHeight}mm` : `${(frameHeight / 25.4).toFixed(2)}in`}
+          </label>
+          <input
+            type="range"
+            min="100"
+            max="600"
+            step="10"
+            value={frameHeight}
+            onChange={(e) => onFrameHeightChange(Number(e.target.value))}
+            style={styles.slider}
+          />
+        </div>
+
+        <div style={styles.control}>
+          <label style={styles.label}>
+            Frame Depth: {mirrorSpacing + 10}mm</label>
+          <input
+            type="range"
+            min="11"
+            max="120"
+            step="2"
             value={mirrorSpacing}
             onChange={(e) => onMirrorSpacingChange(Number(e.target.value))}
+            style={styles.slider}
+          />
+        </div>
+
+        <div style={styles.control}>
+          <label style={styles.label}>Layers: {reflectionDepth}</label>
+          <input
+            type="range"
+            min="4"
+            max="20"
+            step="1"
+            value={reflectionDepth}
+            onChange={(e) => onReflectionDepthChange(Number(e.target.value))}
             style={styles.slider}
           />
         </div>
@@ -273,23 +357,6 @@ export default function ControlsPanel({
         </div>
       </div>
 
-      {/* Reflection Depth */}
-      <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Reflection Depth</h3>
-        <div style={styles.control}>
-          <label style={styles.label}>Layers: {reflectionDepth}</label>
-          <input
-            type="range"
-            min="1"
-            max="10"
-            step="1"
-            value={reflectionDepth}
-            onChange={(e) => onReflectionDepthChange(Number(e.target.value))}
-            style={styles.slider}
-          />
-        </div>
-      </div>
-
       {/* Auto-orbit */}
       <div style={styles.section}>
         <h3 style={styles.sectionTitle}>Camera</h3>
@@ -303,6 +370,26 @@ export default function ControlsPanel({
             />
             Auto-orbit
           </label>
+        </div>
+      </div>
+
+      {/* Export Button */}
+      <div style={styles.section}>
+        <h3 style={styles.sectionTitle}>Export</h3>
+        <button
+          onClick={onExportClick}
+          style={{
+            ...styles.exportButton,
+            backgroundColor: lightColor,
+            color: getContrastColor(lightColor)
+          }}
+        >
+          Save & Export Design
+        </button>
+        <div style={styles.exportNote}>
+          <small>
+            Export your configuration for manufacturing with tamper protection
+          </small>
         </div>
       </div>
 
@@ -426,5 +513,24 @@ const styles = {
     color: '#999',
     fontSize: '11px',
     lineHeight: '1.5'
+  },
+  exportButton: {
+    width: '100%',
+    padding: '12px 16px',
+    backgroundColor: '#00ffff',
+    color: '#000',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '14px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    marginBottom: '8px'
+  },
+  exportNote: {
+    color: '#999',
+    fontSize: '11px',
+    lineHeight: '1.4',
+    textAlign: 'center'
   }
 }

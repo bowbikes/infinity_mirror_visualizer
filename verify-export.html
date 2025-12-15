@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Infinity Mirror Export Verifier</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #ffffff;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding: 30px 0;
+      border-bottom: 2px solid #00ffff;
+    }
+
+    header h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+      color: #00ffff;
+    }
+
+    header p {
+      color: #aaa;
+      font-size: 16px;
+    }
+
+    .upload-section {
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px dashed #00ffff;
+      border-radius: 12px;
+      padding: 40px;
+      text-align: center;
+      margin-bottom: 30px;
+      transition: all 0.3s;
+    }
+
+    .upload-section:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: #00dddd;
+    }
+
+    .upload-section input[type="file"] {
+      display: none;
+    }
+
+    .upload-button {
+      background: #00ffff;
+      color: #000;
+      padding: 15px 40px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .upload-button:hover {
+      background: #00dddd;
+      transform: translateY(-2px);
+    }
+
+    .upload-button:active {
+      transform: translateY(0);
+    }
+
+    .results {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 20px;
+    }
+
+    .results.hidden {
+      display: none;
+    }
+
+    .status {
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-weight: 600;
+      font-size: 18px;
+    }
+
+    .status.valid {
+      background: #1a3a1a;
+      border: 2px solid #2d5a2d;
+      color: #9fd99f;
+    }
+
+    .status.invalid {
+      background: #3a1a1a;
+      border: 2px solid #5a2d2d;
+      color: #f99f9f;
+    }
+
+    .section {
+      margin-bottom: 25px;
+    }
+
+    .section h3 {
+      font-size: 18px;
+      color: #00ffff;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #333;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+
+    .info-item {
+      background: rgba(255, 255, 255, 0.03);
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid #333;
+    }
+
+    .info-label {
+      font-size: 12px;
+      color: #999;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .info-value {
+      font-size: 15px;
+      color: #fff;
+      word-break: break-word;
+    }
+
+    .color-preview {
+      display: inline-block;
+      width: 30px;
+      height: 30px;
+      border-radius: 4px;
+      border: 2px solid #555;
+      vertical-align: middle;
+      margin-left: 10px;
+    }
+
+    .preview-image {
+      width: 100%;
+      max-width: 500px;
+      border-radius: 8px;
+      border: 2px solid #333;
+      margin-top: 15px;
+    }
+
+    .signature-info {
+      background: rgba(0, 255, 255, 0.1);
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #00ffff;
+      margin-top: 15px;
+      font-family: monospace;
+      font-size: 12px;
+      color: #00ffff;
+      word-break: break-all;
+    }
+
+    .error {
+      background: #3a1a1a;
+      border: 2px solid #5a2d2d;
+      color: #f99f9f;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #333;
+      color: #666;
+      font-size: 14px;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Infinity Mirror Export Verifier</h1>
+      <p>Verify the authenticity and integrity of exported configuration files</p>
+    </header>
+
+    <div class="upload-section">
+      <h2 style="margin-bottom: 15px;">Upload Export File</h2>
+      <p style="color: #aaa; margin-bottom: 20px;">Select a ZIP file exported from the Infinity Mirror Visualizer</p>
+      <input type="file" id="fileInput" accept=".zip" />
+      <button class="upload-button" onclick="document.getElementById('fileInput').click()">
+        Choose ZIP File
+      </button>
+    </div>
+
+    <div id="results" class="results hidden">
+      <div id="statusMessage" class="status"></div>
+
+      <div id="configSection" class="section hidden">
+        <h3>Configuration Details</h3>
+
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="info-label">Export Date</div>
+            <div class="info-value" id="exportDate">-</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Customer Name</div>
+            <div class="info-value" id="customerName">-</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Customer Email</div>
+            <div class="info-value" id="customerEmail">-</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Config Version</div>
+            <div class="info-value" id="configVersion">-</div>
+          </div>
+        </div>
+
+        <h3 style="margin-top: 25px;">Design Specifications</h3>
+
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="info-label">Shape/Icon</div>
+            <div class="info-value" id="shapeType">-</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Light Color</div>
+            <div class="info-value" id="lightColor">-</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Frame Color</div>
+            <div class="info-value" id="frameColor">-</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Wall Color</div>
+            <div class="info-value" id="wallColor">-</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Mirror Spacing</div>
+            <div class="info-value" id="mirrorSpacing">-</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Reflection Depth</div>
+            <div class="info-value" id="reflectionDepth">-</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Icon Scale</div>
+            <div class="info-value" id="iconScale">-</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Icon Rotation</div>
+            <div class="info-value" id="iconRotation">-</div>
+          </div>
+        </div>
+
+        <h3 style="margin-top: 25px;">Customer Notes</h3>
+        <div class="info-item">
+          <div class="info-value" id="customerNotes">-</div>
+        </div>
+
+        <h3 style="margin-top: 25px;">Preview Image</h3>
+        <img id="previewImage" class="preview-image" style="display: none;" />
+
+        <div id="customSvgSection" style="display: none;">
+          <h3 style="margin-top: 25px;">Custom SVG Icon</h3>
+          <div style="background: rgba(255, 255, 255, 0.03); padding: 15px; border-radius: 8px; border: 1px solid #333;">
+            <p style="color: #aaa; margin-bottom: 10px;">Custom SVG file included in export: <strong style="color: #00ffff;">custom-icon.svg</strong></p>
+            <div id="svgPreview" style="background: white; padding: 20px; border-radius: 6px; text-align: center; min-height: 200px; display: flex; align-items: center; justify-content: center;"></div>
+          </div>
+        </div>
+
+        <h3 style="margin-top: 25px;">Security Signature</h3>
+        <div class="signature-info" id="signature">-</div>
+      </div>
+    </div>
+
+    <footer>
+      <p>Infinity Mirror Visualizer Export Verifier v1.0</p>
+      <p>This tool verifies cryptographic signatures to detect file tampering</p>
+    </footer>
+  </div>
+
+  <script>
+    // Signature verification function (must match the one in exportUtils.js)
+    async function generateSignature(data, secretKey = 'INFINITY_MIRROR_V1') {
+      const encoder = new TextEncoder();
+      const dataBuffer = encoder.encode(JSON.stringify(data) + secretKey);
+
+      const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+      return hashHex;
+    }
+
+    async function verifySignature(data, signature, secretKey = 'INFINITY_MIRROR_V1') {
+      const expectedSignature = await generateSignature(data, secretKey);
+      return expectedSignature === signature;
+    }
+
+    document.getElementById('fileInput').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const results = document.getElementById('results');
+      const statusMessage = document.getElementById('statusMessage');
+      const configSection = document.getElementById('configSection');
+
+      results.classList.remove('hidden');
+      configSection.classList.add('hidden');
+
+      try {
+        statusMessage.className = 'status';
+        statusMessage.textContent = 'Verifying file...';
+
+        // Load ZIP file
+        const zip = await JSZip.loadAsync(file);
+
+        // Check for required files
+        const configFile = zip.file('configuration.json');
+        if (!configFile) {
+          throw new Error('Missing configuration.json file');
+        }
+
+        // Parse configuration
+        const configText = await configFile.async('text');
+        const exportData = JSON.parse(configText);
+
+        // Verify signature
+        const isValid = await verifySignature(exportData.config, exportData.signature);
+
+        if (!isValid) {
+          statusMessage.className = 'status invalid';
+          statusMessage.innerHTML = '⚠️ INVALID SIGNATURE - File may have been tampered with';
+          configSection.classList.remove('hidden');
+          document.getElementById('signature').textContent = `Expected signature does not match!\nReceived: ${exportData.signature}`;
+          return;
+        }
+
+        // Valid file - display information
+        statusMessage.className = 'status valid';
+        statusMessage.innerHTML = '✓ Valid Export - Signature Verified';
+        configSection.classList.remove('hidden');
+
+        const config = exportData.config;
+
+        // Populate fields
+        document.getElementById('exportDate').textContent = new Date(config.customer.exportDate).toLocaleString();
+        document.getElementById('customerName').textContent = config.customer.name || 'Anonymous';
+        document.getElementById('customerEmail').textContent = config.customer.email || 'Not provided';
+        document.getElementById('configVersion').textContent = config.version;
+        document.getElementById('shapeType').textContent = config.icon.shapeType;
+
+        // Colors with preview
+        document.getElementById('lightColor').innerHTML = config.colors.lightColor +
+          `<span class="color-preview" style="background-color: ${config.colors.lightColor}"></span>`;
+        document.getElementById('frameColor').innerHTML = config.colors.frameColor +
+          `<span class="color-preview" style="background-color: ${config.colors.frameColor}"></span>`;
+        document.getElementById('wallColor').innerHTML = config.colors.wallColor +
+          `<span class="color-preview" style="background-color: ${config.colors.wallColor}"></span>`;
+
+        document.getElementById('mirrorSpacing').textContent = config.mirror.spacing + ' mm';
+        document.getElementById('reflectionDepth').textContent = config.mirror.reflectionDepth + ' layers';
+        document.getElementById('iconScale').textContent = config.transform.scale.toFixed(2) + 'x';
+        document.getElementById('iconRotation').textContent = config.transform.rotation + '°';
+        document.getElementById('customerNotes').textContent = config.customer.notes || 'No notes provided';
+        document.getElementById('signature').textContent = exportData.signature;
+
+        // Load preview image
+        const previewFile = zip.file('preview.png');
+        if (previewFile) {
+          const imageBlob = await previewFile.async('blob');
+          const imageUrl = URL.createObjectURL(imageBlob);
+          const img = document.getElementById('previewImage');
+          img.src = imageUrl;
+          img.style.display = 'block';
+        }
+
+        // Load and display custom SVG if present
+        const customSvgFile = zip.file('custom-icon.svg');
+        if (customSvgFile) {
+          const svgContent = await customSvgFile.async('text');
+          const svgPreview = document.getElementById('svgPreview');
+          svgPreview.innerHTML = svgContent;
+          document.getElementById('customSvgSection').style.display = 'block';
+
+          // Style the embedded SVG
+          const svgElement = svgPreview.querySelector('svg');
+          if (svgElement) {
+            svgElement.style.maxWidth = '300px';
+            svgElement.style.maxHeight = '300px';
+            svgElement.style.width = 'auto';
+            svgElement.style.height = 'auto';
+          }
+        }
+
+      } catch (error) {
+        statusMessage.className = 'status invalid';
+        statusMessage.innerHTML = '⚠️ ERROR: ' + error.message;
+        console.error('Verification error:', error);
+      }
+    });
+  </script>
+</body>
+</html>

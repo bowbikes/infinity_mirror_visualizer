@@ -1,8 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import InfinityMirrorScene from './components/InfinityMirrorScene'
 import ControlsPanel from './components/ControlsPanel'
+import ExportModal from './components/ExportModal'
+import {
+  serializeConfiguration,
+  captureCanvasSnapshot,
+  createExportZip,
+  downloadZipFile,
+  sendToManufacturer
+} from './utils/exportUtils'
 
 /**
  * Main App Component
@@ -31,6 +39,11 @@ function App() {
   const [frameColor, setFrameColor] = useState('#424243')
   const [lightColor, setLightColor] = useState('#00ffff')
 
+  // Frame dimensions
+  const [frameWidth, setFrameWidth] = useState(300) // mm
+  const [frameHeight, setFrameHeight] = useState(300) // mm
+  const [units, setUnits] = useState('mm') // 'mm' or 'in'
+
   // Mirror settings
   const [mirrorSpacing, setMirrorSpacing] = useState(20) // mm
 
@@ -49,6 +62,11 @@ function App() {
 
   // Performance settings
   const [enableBloom, setEnableBloom] = useState(false)
+
+  // Export modal
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const canvasRef = useRef(null)
 
   // Update shape type when preset changes
   useEffect(() => {
@@ -88,13 +106,113 @@ function App() {
     // User can manually switch to stroke mode if needed via the controls
   }
 
+  // Export handlers
+  const handleExportClick = () => {
+    setIsExportModalOpen(true)
+  }
+
+  const handleExportDownload = async (customerInfo) => {
+    setIsExporting(true)
+    try {
+      // Serialize the current configuration
+      const config = serializeConfiguration({
+        selectedPreset,
+        shapeType,
+        customSvgPath,
+        svgRenderMode,
+        wallColor,
+        frameColor,
+        lightColor,
+        mirrorSpacing,
+        iconScale,
+        iconRotation,
+        iconPositionX,
+        iconPositionY,
+        edgeThickness,
+        reflectionDepth,
+        autoOrbit,
+        enableBloom,
+      })
+
+      // Capture canvas snapshot
+      const canvas = canvasRef.current?.querySelector('canvas')
+      const snapshot = await captureCanvasSnapshot(canvas)
+
+      // Create ZIP file
+      const zipBlob = await createExportZip(config, snapshot, customerInfo)
+
+      // Download the file
+      const filename = `infinity-mirror-${customerInfo.name?.replace(/\s+/g, '-') || 'config'}-${Date.now()}.zip`
+      downloadZipFile(zipBlob, filename)
+
+      // Close modal
+      setIsExportModalOpen(false)
+      alert('Export successful! Your configuration has been downloaded.')
+    } catch (error) {
+      console.error('Export error:', error)
+      alert('Export failed: ' + error.message)
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const handleSendToManufacturer = async (customerInfo) => {
+    setIsExporting(true)
+    try {
+      // Serialize the current configuration
+      const config = serializeConfiguration({
+        selectedPreset,
+        shapeType,
+        customSvgPath,
+        svgRenderMode,
+        wallColor,
+        frameColor,
+        lightColor,
+        mirrorSpacing,
+        iconScale,
+        iconRotation,
+        iconPositionX,
+        iconPositionY,
+        edgeThickness,
+        reflectionDepth,
+        autoOrbit,
+        enableBloom,
+      })
+
+      // Capture canvas snapshot
+      const canvas = canvasRef.current?.querySelector('canvas')
+      const snapshot = await captureCanvasSnapshot(canvas)
+
+      // Create ZIP file
+      const zipBlob = await createExportZip(config, snapshot, customerInfo)
+
+      // NOTE: Replace this endpoint with your actual manufacturer endpoint
+      const manufacturerEndpoint = 'https://your-manufacturer-api.com/upload'
+
+      // Send to manufacturer
+      const result = await sendToManufacturer(zipBlob, customerInfo, manufacturerEndpoint)
+
+      if (result.success) {
+        setIsExportModalOpen(false)
+        alert('Successfully sent to manufacturer! You will receive a confirmation email shortly.')
+      } else {
+        throw new Error(result.error || 'Failed to send to manufacturer')
+      }
+    } catch (error) {
+      console.error('Send error:', error)
+      alert('Failed to send to manufacturer: ' + error.message + '\n\nPlease download the file and send it manually.')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   // Convert rotation from degrees to radians for Three.js
   const iconRotationRad = (iconRotation * Math.PI) / 180
 
   return (
     <div style={styles.container}>
       {/* 3D Canvas */}
-      <div style={styles.canvasContainer}>
+      <div style={styles.canvasContainer} ref={canvasRef}>
         <Canvas
           camera={{
             position: [0, 0, 60],
@@ -116,6 +234,8 @@ function App() {
             frameColor={frameColor}
             lightColor={lightColor}
             mirrorSpacingMm={mirrorSpacing}
+            frameWidthMm={frameWidth}
+            frameHeightMm={frameHeight}
             iconScale={iconScale}
             iconRotation={iconRotationRad}
             iconPosition={[iconPositionX, iconPositionY, 0]}
@@ -126,7 +246,7 @@ function App() {
 
           {/* Optional bloom effect for neon glow */}
           {enableBloom && (
-            <EffectComposer>
+            <EffectComposer multisampling={8}>
               <Bloom
                 intensity={1.5}
                 luminanceThreshold={0.3}
@@ -164,6 +284,12 @@ function App() {
         onFrameColorChange={setFrameColor}
         lightColor={lightColor}
         onLightColorChange={setLightColor}
+        frameWidth={frameWidth}
+        onFrameWidthChange={setFrameWidth}
+        frameHeight={frameHeight}
+        onFrameHeightChange={setFrameHeight}
+        units={units}
+        onUnitsChange={setUnits}
         mirrorSpacing={mirrorSpacing}
         onMirrorSpacingChange={setMirrorSpacing}
         iconScale={iconScale}
@@ -180,6 +306,16 @@ function App() {
         onReflectionDepthChange={setReflectionDepth}
         autoOrbit={autoOrbit}
         onAutoOrbitChange={setAutoOrbit}
+        onExportClick={handleExportClick}
+      />
+
+      {/* Export Modal */}
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={handleExportDownload}
+        onSendToManufacturer={handleSendToManufacturer}
+        isProcessing={isExporting}
       />
     </div>
   )

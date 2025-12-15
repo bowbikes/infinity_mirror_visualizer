@@ -21,14 +21,15 @@ export default function ReflectionLayers({
   rotation,
   position,
   depth = 7,
-  spacing = 2, // mirror spacing in units (1 unit = 10mm, so 2 units = 20mm)
+  spacing = 1, // mirror spacing in units (1 unit = 10mm, so 2 units = 20mm)
   mirrorSpacingMm = 20,
-  edgeThickness = 0.2
+  edgeThickness = 0.2,
+  frameBounds = null // [width, height] of frame opening to clip geometry
 }) {
   // Calculate layer spacing based on mirror spacing
   // Each reflection appears to be twice as far back
   // Increased spacing for better visibility
-  const layerSpacing = spacing * 2
+  const layerSpacing = spacing
 
   const layers = useMemo(() => {
     const layerArray = []
@@ -64,22 +65,31 @@ export default function ReflectionLayers({
 
   return (
     <group>
-      {layers.map((layer) => (
-        <group key={layer.key} position={layer.position}>
-          <SvgIcon
-            shapeType={shapeType}
-            customSvgPath={customSvgPath}
-            svgRenderMode={svgRenderMode}
-            color={layer.color}
-            scale={layer.scale}
-            rotation={rotation}
-            position={[0, 0, 0]}
-            edgeThickness={edgeThickness}
-            layerIndex={layer.layerIndex}
-          />
-          {/* Glow plane removed temporarily for debugging */}
-        </group>
-      ))}
+      {layers.map((layer) => {
+        // Calculate effective frame bounds in local coordinate space
+        // by dividing by the scale that will be applied
+        const localFrameBounds = layer.layerIndex === 0 && frameBounds
+          ? [frameBounds[0] / layer.scale, frameBounds[1] / layer.scale]
+          : null
+
+        return (
+          <group key={layer.key} position={layer.position}>
+            <SvgIcon
+              shapeType={shapeType}
+              customSvgPath={customSvgPath}
+              svgRenderMode={svgRenderMode}
+              color={layer.color}
+              scale={layer.scale}
+              rotation={rotation}
+              position={[0, 0, 0]}
+              edgeThickness={edgeThickness}
+              layerIndex={layer.layerIndex}
+              frameBounds={localFrameBounds}
+            />
+            {/* Glow plane removed temporarily for debugging */}
+          </group>
+        )
+      })}
     </group>
   )
 }
