@@ -19,6 +19,8 @@ export default function InfinityMirrorScene({
   frameColor,
   lightColor,
   mirrorSpacingMm,
+  frameWidthMm,
+  frameHeightMm,
   iconScale,
   iconRotation,
   iconPosition,
@@ -28,6 +30,12 @@ export default function InfinityMirrorScene({
 }) {
   const orbitControlsRef = useRef()
   const orbitTimeRef = useRef(0)
+
+  // Calculate wall dimensions based on frame size
+  const frameWidthUnits = frameWidthMm / 10
+  const frameHeightUnits = frameHeightMm / 10
+  const wallPadding = 25 // units of padding around the frame
+  const wallSegmentSize = 70 // size of wall segments beyond the frame
 
   // Auto-orbit effect - smooth rotation around Z axis
   useFrame((state, delta) => {
@@ -72,6 +80,7 @@ export default function InfinityMirrorScene({
         minDistance={30}
         maxDistance={180}
         enablePan={false}
+        enableRotate={!autoOrbit}
       />
 
       {/* Lighting */}
@@ -80,9 +89,10 @@ export default function InfinityMirrorScene({
       <directionalLight position={[-5, 5, 5]} intensity={0.6} />
 
       {/* Wall behind the mirror - 4 rectangles around the frame opening */}
-      {/* Top section */}
-      <mesh position={[0, 50, 0]}>
-        <planeGeometry args={[200, 70]} />
+      {/* Calculate total wall dimensions */}
+      {/* Top section - positioned above the frame */}
+      <mesh position={[0, frameHeightUnits / 2 + wallSegmentSize / 2, 0]}>
+        <planeGeometry args={[frameWidthUnits + wallSegmentSize * 2, wallSegmentSize]} />
         <meshStandardMaterial
           color={wallColor}
           roughness={0.9}
@@ -90,9 +100,9 @@ export default function InfinityMirrorScene({
         />
       </mesh>
 
-      {/* Bottom section */}
-      <mesh position={[0, -50, 0]}>
-        <planeGeometry args={[200, 70]} />
+      {/* Bottom section - positioned below the frame */}
+      <mesh position={[0, -(frameHeightUnits / 2 + wallSegmentSize / 2), 0]}>
+        <planeGeometry args={[frameWidthUnits + wallSegmentSize * 2, wallSegmentSize]} />
         <meshStandardMaterial
           color={wallColor}
           roughness={0.9}
@@ -100,9 +110,9 @@ export default function InfinityMirrorScene({
         />
       </mesh>
 
-      {/* Left section */}
-      <mesh position={[-57.5, 0, 0]}>
-        <planeGeometry args={[85, 60]} />
+      {/* Left section - only covers the height of the frame (no overlap with top/bottom) */}
+      <mesh position={[-(frameWidthUnits / 2 + wallSegmentSize / 2), 0, 0]}>
+        <planeGeometry args={[wallSegmentSize, frameHeightUnits]} />
         <meshStandardMaterial
           color={wallColor}
           roughness={0.9}
@@ -110,9 +120,9 @@ export default function InfinityMirrorScene({
         />
       </mesh>
 
-      {/* Right section */}
-      <mesh position={[57.5, 0, 0]}>
-        <planeGeometry args={[85, 60]} />
+      {/* Right section - only covers the height of the frame (no overlap with top/bottom) */}
+      <mesh position={[frameWidthUnits / 2 + wallSegmentSize / 2, 0, 0]}>
+        <planeGeometry args={[wallSegmentSize, frameHeightUnits]} />
         <meshStandardMaterial
           color={wallColor}
           roughness={0.9}
@@ -128,6 +138,8 @@ export default function InfinityMirrorScene({
         lightColor={lightColor}
         frameColor={frameColor}
         mirrorSpacingMm={mirrorSpacingMm}
+        frameWidthMm={frameWidthMm}
+        frameHeightMm={frameHeightMm}
         iconScale={iconScale}
         iconRotation={iconRotation}
         iconPosition={iconPosition}

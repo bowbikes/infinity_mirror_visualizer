@@ -21,6 +21,8 @@ export default function InfinityMirrorBox({
   lightColor,
   frameColor,
   mirrorSpacingMm,
+  frameWidthMm = 300,
+  frameHeightMm = 300,
   iconScale,
   iconRotation,
   iconPosition,
@@ -30,8 +32,8 @@ export default function InfinityMirrorBox({
   const boxRef = useRef()
 
   // Dimensions in units (1 unit = 10mm)
-  const width = 30 // 300mm
-  const height = 30 // 300mm
+  const width = frameWidthMm / 10
+  const height = frameHeightMm / 10
 
   // Convert mirror spacing from mm to units
   const spacing = mirrorSpacingMm / 10 // e.g., 20mm -> 2 units
@@ -56,7 +58,7 @@ export default function InfinityMirrorBox({
   const taperAngle = Math.atan(scaleReductionPerUnitDepth)
 
   // Multiplier to fine-tune the taper angle
-  const taperMultiple = 12.5
+  const taperMultiple = 32.5
 
   return (
     <group ref={boxRef}>
@@ -107,7 +109,7 @@ export default function InfinityMirrorBox({
       {/* Inner cavity - REMOVED to create infinite depth illusion */}
       {/* The black void is now open so you can see through to all reflection layers */}
 
-      {/* Icon and reflection layers - ENABLED with non-emissive materials */}
+      {/* Icon and reflection layers - positioned with first layer in middle of frame */}
       <ReflectionLayers
         shapeType={shapeType}
         customSvgPath={customSvgPath}
@@ -118,12 +120,13 @@ export default function InfinityMirrorBox({
         position={[
           iconPosition[0] * 5,
           iconPosition[1] * 5,
-          innerMirrorZ + 0.1
+          totalDepth / 2
         ]}
         depth={reflectionDepth}
         spacing={spacing}
         mirrorSpacingMm={mirrorSpacingMm}
         edgeThickness={edgeThickness}
+        frameBounds={[width - 2, height - 2]}
       />
 
       {/* Front 2-way mirror (semi-transparent) */}
@@ -157,7 +160,7 @@ export default function InfinityMirrorBox({
       {/* Each plane is in a group that rotates around the frame edge (front of box) */}
 
       {/* Top clipping plane - rotated inward around X axis from front edge */}
-      <group position={[0, height / 2 - 1, totalDepth + 0.1]} rotation={[-taperMultiple*taperAngle, 0, 0]}>
+      <group position={[0, height / 2 - 0.2 , totalDepth + 0.1]} rotation={[-taperMultiple*taperAngle, 0, 0]}>
         <mesh position={[0, 0, -50 - (totalDepth + 0.1)]}>
           <boxGeometry args={[width, 1, 100]} />
           <meshBasicMaterial color="#000000" side={THREE.DoubleSide} />
@@ -165,7 +168,7 @@ export default function InfinityMirrorBox({
       </group>
 
       {/* Bottom clipping plane - rotated inward around X axis from front edge */}
-      <group position={[0, -height / 2 + 1, totalDepth + 0.1]} rotation={[taperMultiple*taperAngle, 0, 0]}>
+      <group position={[0, -height / 2 + 0.2, totalDepth + 0.1]} rotation={[taperMultiple*taperAngle, 0, 0]}>
         <mesh position={[0, 0, -50 - (totalDepth + 0.1)]}>
           <boxGeometry args={[width, 1, 100]} />
           <meshBasicMaterial color="#000000" side={THREE.DoubleSide} />
@@ -173,7 +176,7 @@ export default function InfinityMirrorBox({
       </group>
 
       {/* Left clipping plane - rotated inward around Y axis from front edge */}
-      <group position={[-width / 2 + 1, 0, totalDepth + 0.1]} rotation={[0, -taperMultiple*taperAngle, 0]}>
+      <group position={[-width / 2 + 0.2, 0, totalDepth + 0.1]} rotation={[0, -taperMultiple*taperAngle, 0]}>
         <mesh position={[0, 0, -50 - (totalDepth + 0.1)]}>
           <boxGeometry args={[1, height - 2, 100]} />
           <meshBasicMaterial color="#000000" side={THREE.DoubleSide} />
@@ -181,7 +184,7 @@ export default function InfinityMirrorBox({
       </group>
 
       {/* Right clipping plane - rotated inward around Y axis from front edge */}
-      <group position={[width / 2 - 1, 0, totalDepth + 0.1]} rotation={[0, taperMultiple*taperAngle, 0]}>
+      <group position={[width / 2 - 0.2, 0, totalDepth + 0.1]} rotation={[0, taperMultiple*taperAngle, 0]}>
         <mesh position={[0, 0, -50 - (totalDepth + 0.1)]}>
           <boxGeometry args={[1, height - 2, 100]} />
           <meshBasicMaterial color="#000000" side={THREE.DoubleSide} />
