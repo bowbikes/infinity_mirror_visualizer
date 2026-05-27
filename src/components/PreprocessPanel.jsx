@@ -94,10 +94,10 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
   const [coloredSvg, setColoredSvg] = useState(null)
   const [colorList, setColorList] = useState([])
 
-  // Manufacturability sliders (mm). Nozzle defaults to 0 so the visualizer
-  // preview shows the uploaded art as-is — the Python tool applies real
-  // nozzle rounding at fab time. Dial it up here to *preview* the impact.
-  const [nozzleDiameterMm, setNozzleDiameterMm] = useState(0)
+  // Manufacturability sliders (mm). Default matches the Python tool's
+  // production setting so the preview reflects fab geometry; users can
+  // dial it down to see the source art without rounding.
+  const [nozzleDiameterMm, setNozzleDiameterMm] = useState(0.6)
   const [minIslandAreaMm2, setMinIslandAreaMm2] = useState(0)
   const [minFeatureWidthMm, setMinFeatureWidthMm] = useState(0)
   const [maxLogoDimMm, setMaxLogoDimMm] = useState(100)
@@ -239,16 +239,22 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
 
       <div style={styles.control}>
         <label style={styles.label}>Upload JPG, PNG, or SVG:</label>
-        <input
-          type="file"
-          accept=".svg,image/svg+xml,.jpg,.jpeg,.png,image/jpeg,image/png"
-          onChange={handleFileUpload}
-          disabled={busy}
-          style={styles.fileInput}
-        />
-        {selectedFileName && (
-          <div style={styles.filename}>Selected: {selectedFileName}</div>
-        )}
+        {/* Custom-styled file input. The native <input type="file"> always
+            renders a browser "Choose File / No file chosen" label that we
+            can't restyle and that we don't want showing the stale "No file
+            chosen" after every upload (we clear e.target.value so the user
+            can re-select the same file). Hide it visually, drive it from a
+            label that shows our own state. */}
+        <label style={{ ...styles.uploadButton, opacity: busy ? 0.6 : 1 }}>
+          <span>{selectedFileName || 'Choose file…'}</span>
+          <input
+            type="file"
+            accept=".svg,image/svg+xml,.jpg,.jpeg,.png,image/jpeg,image/png"
+            onChange={handleFileUpload}
+            disabled={busy}
+            style={styles.hiddenInput}
+          />
+        </label>
       </div>
 
       {busy && <div style={styles.info}>Processing…</div>}
@@ -392,22 +398,31 @@ const styles = {
     fontSize: '13px',
     color: '#ccc',
   },
-  fileInput: {
+  uploadButton: {
+    display: 'block',
     width: '100%',
-    padding: '8px',
-    fontSize: '12px',
+    padding: '10px 12px',
+    fontSize: '13px',
     color: '#ffffff',
     backgroundColor: '#2a2a2a',
-    border: '1px solid #444',
+    border: '1px solid #555',
     borderRadius: '4px',
-  },
-  filename: {
-    marginTop: '6px',
-    fontSize: '12px',
-    color: '#9cd0ff',
+    cursor: 'pointer',
+    textAlign: 'center',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
+    boxSizing: 'border-box',
+  },
+  hiddenInput: {
+    position: 'absolute',
+    width: '1px',
+    height: '1px',
+    padding: 0,
+    margin: '-1px',
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    border: 0,
   },
   slider: {
     width: '100%',

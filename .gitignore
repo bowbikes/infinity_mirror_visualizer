@@ -15,10 +15,11 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Editor directories and files
+# Editor / tool directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
+.claude/
 *.suo
 *.ntvs*
 *.njsproj

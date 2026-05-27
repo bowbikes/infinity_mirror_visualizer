@@ -1,17 +1,21 @@
 import { memo, useMemo } from 'react'
 import * as THREE from 'three'
-import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader'
 
 import { clipPolygon } from '../utils/svgClip'
+import { parseSvgToPolygons } from '../preprocess/svgParse'
 
-// Cache SVG parses keyed by raw text — each reflection layer renders its
-// own SvgIcon, and without this every layer would re-parse the same SVG.
-const _svgParseCache = new Map()
-function getParsedSvg(svgText) {
-  let parsed = _svgParseCache.get(svgText)
+// Cache parsed polygons keyed by raw text — each reflection layer renders
+// its own SvgIcon, and without this every layer would re-parse + re-XOR
+// the same SVG via clipper. Using parseSvgToPolygons (clipper pftEvenOdd)
+// instead of Three.js's path.toShapes(false) avoids winding-heuristic bugs
+// that turn ring shapes (dog outline, halo logos) into filled silhouettes
+// or fragmented triangles.
+const _polygonsCache = new Map()
+function getParsedPolygons(svgText) {
+  let parsed = _polygonsCache.get(svgText)
   if (!parsed) {
-    parsed = new SVGLoader().parse(svgText)
-    _svgParseCache.set(svgText, parsed)
+    parsed = parseSvgToPolygons(svgText)
+    _polygonsCache.set(svgText, parsed)
   }
   return parsed
 }
@@ -45,25 +49,27 @@ function SvgIconImpl({
 
   // Create extruded outline geometry
   const outlineGeometry = useMemo(() => {
-    // Custom SVG: render as flat fill via SVGLoader → ShapeGeometry with
-    // evenodd holes. Matches what the laser actually cuts.
+    // Custom SVG: render as flat fill via our parseSvgToPolygons → THREE.Shape
+    // pipeline. parseSvgToPolygons uses clipper-lib's pftEvenOdd XOR which is
+    // winding-direction-independent, unlike Three.js's path.toShapes() which
+    // turns ring shapes into filled silhouettes when subpath windings don't
+    // match its heuristic. The output is a flat fill matching the laser cut.
     if (shapeType === 'custom' && customSvgPath) {
       try {
-        const svgData = getParsedSvg(customSvgPath)
+        const { polygons } = getParsedPolygons(customSvgPath)
+        if (polygons.length === 0) return createFallbackGeometry()
 
-        // Compute bounds across every subpath so the icon fits into a
-        // consistent target size regardless of the source viewBox.
+        // Bounds across every ring (outer + holes count for clipping the
+        // icon to a consistent target size regardless of source viewBox).
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-        svgData.paths.forEach((path) => {
-          path.subPaths.forEach((subPath) => {
-            for (const p of subPath.getPoints()) {
-              if (p.x < minX) minX = p.x
-              if (p.x > maxX) maxX = p.x
-              if (p.y < minY) minY = p.y
-              if (p.y > maxY) maxY = p.y
+        for (const poly of polygons) {
+          for (const ring of [poly.outer, ...poly.holes]) {
+            for (const { x, y } of ring) {
+              if (x < minX) minX = x; if (x > maxX) maxX = x
+              if (y < minY) minY = y; if (y > maxY) maxY = y
             }
-          })
-        })
+          }
+        }
         if (minX === Infinity) return createFallbackGeometry()
 
         const targetSize = 10
@@ -72,24 +78,18 @@ function SvgIconImpl({
         const centerX = (minX + maxX) / 2
         const centerY = (minY + maxY) / 2
 
-        // Evenodd fill rule (toShapes(false)) gives us outer + holes,
-        // matching the preprocessing pipeline that produced this SVG.
-        const allShapes = []
-        for (const path of svgData.paths) {
-          for (const s of path.toShapes(false)) allShapes.push(s)
-        }
-        if (allShapes.length === 0) return createFallbackGeometry()
-
+        // Y is flipped here: SVG is Y-down, Three.js scene is Y-up. After
+        // the flip the polygon's visual winding reverses, which is exactly
+        // what THREE.ShapeGeometry / earcut expects (outer CCW, holes CW
+        // in math/right-handed coords).
         const xform = (p) => ({
           x: (p.x - centerX) * scaleFactor,
           y: -(p.y - centerY) * scaleFactor,
         })
 
         const geometries = []
-        for (const shape of allShapes) {
-          const outer = shape.getPoints()
-          if (outer.length < 3) continue
-          const outerXf = outer.map(xform)
+        for (const poly of polygons) {
+          const outerXf = poly.outer.map(xform)
           const outerClipped = clipPolygon(outerXf, frameBounds)
           if (outerClipped.length < 3) continue
 
@@ -100,10 +100,9 @@ function SvgIconImpl({
           })
           fillShape.closePath()
 
-          for (const hole of shape.holes || []) {
-            const hp = hole.getPoints()
-            if (hp.length < 3) continue
-            const holeClipped = clipPolygon(hp.map(xform), frameBounds)
+          for (const hole of poly.holes) {
+            const holeXf = hole.map(xform)
+            const holeClipped = clipPolygon(holeXf, frameBounds)
             if (holeClipped.length < 3) continue
             const holePath = new THREE.Path()
             holeClipped.forEach((p, i) => {
@@ -121,11 +120,23 @@ function SvgIconImpl({
         if (geometries.length === 1) return geometries[0]
 
         // Merge into one BufferGeometry so we render in a single draw call.
+        // ShapeGeometry is INDEXED — naïvely concatenating .position arrays
+        // throws away the .index buffer and produces a garbage triangle salad
+        // (the cyan-triangle-spike artifact). Expand each indexed geometry
+        // into a flat triangle list before concatenating.
         const merged = new THREE.BufferGeometry()
         const positions = []
         for (const g of geometries) {
-          const arr = g.attributes.position.array
-          for (let i = 0; i < arr.length; i++) positions.push(arr[i])
+          const posArr = g.attributes.position.array
+          const indexArr = g.index ? g.index.array : null
+          if (indexArr) {
+            for (let i = 0; i < indexArr.length; i++) {
+              const vi = indexArr[i] * 3
+              positions.push(posArr[vi], posArr[vi + 1], posArr[vi + 2])
+            }
+          } else {
+            for (let i = 0; i < posArr.length; i++) positions.push(posArr[i])
+          }
         }
         merged.setAttribute(
           'position',

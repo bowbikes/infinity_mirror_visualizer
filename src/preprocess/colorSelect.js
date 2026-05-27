@@ -158,7 +158,13 @@ function resolveFill(el) {
     if (attr !== null) return attr
     cur = cur.parentNode
   }
-  return '#000000' // SVG default for filled shapes when nothing inherits
+  // No fill found anywhere up the inheritance chain. SVG spec defaults
+  // missing fills to black, BUT for pipeline routing we want to distinguish
+  // "explicitly filled" from "merely defaulted." A path with only a stroke
+  // declared via a <style> CSS class (e.g. snowflake's .cls-1) hits this
+  // branch — returning null lets PreprocessPanel route it to the vector
+  // stroke-to-fill path instead of treating it as a filled shape.
+  return null
 }
 
 /**
