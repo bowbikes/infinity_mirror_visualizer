@@ -197,6 +197,7 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
     setMinFeatureWidthMm(minFeatureFromNozzle(DEFAULT_NOZZLE))
     setMinIslandOverridden(false)
     setMinFeatureOverridden(false)
+    setPickedColors([])
   }
 
   // Advanced manufacturability sliders are collapsed by default. The vast
@@ -274,12 +275,22 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
     }
   }
 
-  const pickColor = async (hex) => {
-    if (!coloredSvg) return
+  // Multi-color picker state: which fills the user has tapped on. The
+  // single-tap flow was lossy for art whose "cut" spans several near-black
+  // fills, so the picker now batches: tap to toggle, Apply to commit.
+  const [pickedColors, setPickedColors] = useState([])
+  const togglePickedColor = (hex) => {
+    setPickedColors((prev) =>
+      prev.includes(hex) ? prev.filter((h) => h !== hex) : [...prev, hex]
+    )
+  }
+
+  const applyPickedColors = async () => {
+    if (!coloredSvg || pickedColors.length === 0) return
     setBusy(true)
     try {
       const { selectByColor } = await getPreprocessModule()
-      const { svg } = selectByColor(coloredSvg, { colors: [hex] })
+      const { svg } = selectByColor(coloredSvg, { colors: pickedColors })
       setIntermediateSvg(svg)
       setStage('ready')
     } catch (err) {
@@ -319,23 +330,49 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
       {stage === 'picking' && (
         <div style={styles.control}>
           <label style={styles.label}>
-            Which color is the cut? ({colorList.length} fills found)
+            Which color(s) make up the cut? ({colorList.length} fills found)
           </label>
           <div style={styles.swatchGrid}>
-            {colorList.map((c) => (
-              <button
-                key={c.hex}
-                onClick={() => pickColor(c.hex)}
-                disabled={busy}
-                style={{ ...styles.swatch, backgroundColor: c.hex }}
-                title={`${c.hex} — ${c.nPaths} path(s)`}
-              />
-            ))}
+            {colorList.map((c) => {
+              const picked = pickedColors.includes(c.hex)
+              return (
+                <button
+                  key={c.hex}
+                  onClick={() => togglePickedColor(c.hex)}
+                  disabled={busy}
+                  style={{
+                    ...styles.swatch,
+                    backgroundColor: c.hex,
+                    ...(picked ? styles.swatchPicked : null),
+                  }}
+                  title={`${c.hex} — ${c.nPaths} path(s)`}
+                >
+                  {picked ? '✓' : ''}
+                </button>
+              )
+            })}
           </div>
           <div style={styles.note}>
-            Tap a color to keep only paths with that fill. The rest of the
-            artwork is discarded.
+            Tap colors to include them in the cut. The rest of the artwork
+            is discarded.
           </div>
+          <button
+            type="button"
+            onClick={applyPickedColors}
+            disabled={busy || pickedColors.length === 0}
+            style={{
+              ...styles.applyPickedButton,
+              ...(pickedColors.length === 0
+                ? styles.applyPickedButtonDisabled
+                : null),
+            }}
+          >
+            {pickedColors.length === 0
+              ? 'Select at least one color'
+              : `Apply (${pickedColors.length} ${
+                  pickedColors.length === 1 ? 'color' : 'colors'
+                })`}
+          </button>
         </div>
       )}
 
@@ -581,10 +618,38 @@ const styles = {
   swatch: {
     width: '36px',
     height: '36px',
-    border: '2px solid #444',
+    borderWidth: '2px',
+    borderStyle: 'solid',
+    borderColor: '#444',
     borderRadius: '4px',
     cursor: 'pointer',
     padding: 0,
+    fontSize: '14px',
+    fontWeight: 700,
+    color: '#000',
+    textShadow: '0 0 4px #fff, 0 0 4px #fff',
+  },
+  swatchPicked: {
+    borderColor: '#00ffff',
+    boxShadow: '0 0 0 2px #00ffff inset',
+  },
+  applyPickedButton: {
+    width: '100%',
+    marginTop: '8px',
+    padding: '8px 12px',
+    fontSize: '13px',
+    backgroundColor: '#00ffff',
+    color: '#000',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    fontWeight: 600,
+  },
+  applyPickedButtonDisabled: {
+    backgroundColor: '#2a2a2a',
+    color: '#777',
+    cursor: 'not-allowed',
   },
   nozzleRow: {
     display: 'flex',

@@ -327,6 +327,18 @@ export default function ControlsPanel({
           onChange={onReflectionDepthChange}
           tooltip="Number of reflection iterations rendered. Lower this on mobile or older GPUs if the scene stutters."
         />
+
+        <div style={styles.control}>
+          <label style={styles.checkboxLabel}>
+            <input
+              type="checkbox"
+              checked={autoOrbit}
+              onChange={(e) => onAutoOrbitChange(e.target.checked)}
+              style={styles.checkbox}
+            />
+            Auto-orbit camera
+          </label>
+        </div>
       </div>
 
       {/* SVG Transform */}
@@ -381,6 +393,8 @@ export default function ControlsPanel({
           tooltip="Vertical offset, in frame heights. 0 = centered."
         />
 
+        <div style={styles.subsectionTitle}>Appearance</div>
+
         <SliderControl
           label="Edge Thickness"
           value={edgeThickness}
@@ -392,22 +406,6 @@ export default function ControlsPanel({
           format={(v) => v.toFixed(2)}
           tooltip="Bevel depth at the icon's outline. Catches the light along the rim — larger values read as a thicker glowing edge."
         />
-      </div>
-
-      {/* Auto-orbit */}
-      <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Camera</h3>
-        <div style={styles.control}>
-          <label style={styles.checkboxLabel}>
-            <input
-              type="checkbox"
-              checked={autoOrbit}
-              onChange={(e) => onAutoOrbitChange(e.target.checked)}
-              style={styles.checkbox}
-            />
-            Auto-orbit
-          </label>
-        </div>
       </div>
 
       {/* Export Button */}
@@ -425,7 +423,8 @@ export default function ControlsPanel({
         </button>
         <div style={styles.exportNote}>
           <small>
-            Export your configuration for manufacturing with tamper protection
+            Bundles the configuration with a SHA-256 integrity hash for the
+            manufacturer to verify against.
           </small>
         </div>
         <button
@@ -488,6 +487,16 @@ const styles = {
     fontWeight: '600',
     textTransform: 'uppercase',
     color: '#999'
+  },
+  subsectionTitle: {
+    margin: '8px 0 10px 0',
+    paddingTop: '8px',
+    borderTop: '1px solid #2a2a2a',
+    fontSize: '11px',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    color: '#777',
+    letterSpacing: '0.04em',
   },
   control: {
     marginBottom: '12px'
