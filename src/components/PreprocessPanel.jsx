@@ -134,11 +134,21 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
     if (!minFeatureOverridden) setMinFeatureWidthMm(minFeatureFromNozzle(d))
   }
 
-  // Re-run manufacturability whenever a slider changes (and we have an intermediate).
+  // Most recent post-manufacturability SVG — rendered as an inline
+  // thumbnail so the user can see what the printer sees without having
+  // to look at the 3D canvas. Kept in addition to onPreprocessed (which
+  // also receives the SVG) so the thumbnail lives inside this component.
+  const [processedSvg, setProcessedSvg] = useState(null)
+
+  // Re-run manufacturability whenever a slider changes. Slider drags
+  // can pile up dozens of re-runs per second on dense art, so debounce
+  // both the start (wait until the user pauses) and the cancellation
+  // (drop in-flight work if a new value lands).
+  const RECOMPUTE_DEBOUNCE_MS = 150
   useEffect(() => {
     if (!intermediateSvg) return
     let cancelled = false
-    ;(async () => {
+    const timer = setTimeout(async () => {
       try {
         const { applyManufacturability } = await getPreprocessModule()
         if (cancelled) return
@@ -154,13 +164,15 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
           droppedThin: result.droppedThin,
           droppedSmall: result.droppedSmall,
         })
+        setProcessedSvg(result.svg)
         onPreprocessed(result.svg)
       } catch (err) {
         if (!cancelled) reportError(err.message)
       }
-    })()
+    }, RECOMPUTE_DEBOUNCE_MS)
     return () => {
       cancelled = true
+      clearTimeout(timer)
     }
   }, [
     intermediateSvg,
@@ -178,12 +190,20 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
     setStats(null)
     setErrorMessage(null)
     setSelectedFileName(null)
+    setProcessedSvg(null)
+    setAdvancedOpen(false)
     setNozzleDiameterMm(DEFAULT_NOZZLE)
     setMinIslandAreaMm2(minIslandFromNozzle(DEFAULT_NOZZLE))
     setMinFeatureWidthMm(minFeatureFromNozzle(DEFAULT_NOZZLE))
     setMinIslandOverridden(false)
     setMinFeatureOverridden(false)
   }
+
+  // Advanced manufacturability sliders are collapsed by default. The vast
+  // majority of users want "upload → done" — they only need to crack open
+  // the tuners when the dropped-feature stats or the rendered preview
+  // signal that defaults aren't working for their art.
+  const [advancedOpen, setAdvancedOpen] = useState(false)
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0]
@@ -321,94 +341,19 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
 
       {stage === 'ready' && (
         <>
-          <div style={styles.control}>
-            <label style={styles.label}>
-              Nozzle diameter: {nozzleDiameterMm.toFixed(2)} mm
-            </label>
-            <div style={styles.nozzleRow}>
-              {NOZZLE_OPTIONS.map((d) => {
-                const active = nozzleDiameterMm === d
-                return (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => handleNozzleChange(d)}
-                    style={{
-                      ...styles.nozzleChip,
-                      ...(active ? styles.nozzleChipActive : null),
-                    }}
-                  >
-                    {d === 0 ? 'off' : d.toFixed(2)}
-                  </button>
-                )
-              })}
-            </div>
-            <div style={styles.subnote}>
-              Rounds sharp corners below this radius so the printer can
-              reproduce them.
-            </div>
-            {nozzleDiameterMm === 0 && (
-              <div style={styles.previewMismatchWarn}>
-                The finished product will not be as fine as the rendered
-                preview.
+          {processedSvg && (
+            <div style={styles.thumbnailWrap}>
+              <img
+                src={`data:image/svg+xml;utf8,${encodeURIComponent(processedSvg)}`}
+                alt="Preprocessed artwork preview"
+                style={styles.thumbnail}
+              />
+              <div style={styles.subnote}>
+                This is what the printer cuts — black = material, white =
+                cut away.
               </div>
-            )}
-          </div>
-
-          <div style={styles.control}>
-            <label style={styles.label}>
-              Min island area: {minIslandAreaMm2.toFixed(1)} mm²
-            </label>
-            <input
-              type="range"
-              min="0"
-              max="10"
-              step="0.1"
-              value={minIslandAreaMm2}
-              onChange={(e) => {
-                setMinIslandAreaMm2(Number(e.target.value))
-                setMinIslandOverridden(true)
-              }}
-              style={styles.slider}
-            />
-            <div style={styles.subnote}>
-              Drops islands smaller than this — kills speckles from JPG traces.
             </div>
-            {minIslandAreaMm2 === 0 && (
-              <div style={styles.previewMismatchWarn}>
-                The finished product will not be as fine as the rendered
-                preview.
-              </div>
-            )}
-          </div>
-
-          <div style={styles.control}>
-            <label style={styles.label}>
-              Min feature width: {minFeatureWidthMm.toFixed(2)} mm
-            </label>
-            <input
-              type="range"
-              min="0"
-              max="5"
-              step="0.1"
-              value={minFeatureWidthMm}
-              onChange={(e) => {
-                setMinFeatureWidthMm(Number(e.target.value))
-                setMinFeatureOverridden(true)
-              }}
-              style={styles.slider}
-            />
-            <div style={styles.subnote}>
-              Drops islands whose narrowest part is below this — kills hairlines
-              the printer can't make as walls.
-            </div>
-            {minFeatureWidthMm === 0 && (
-              <div style={styles.previewMismatchWarn}>
-                The finished product will not be as fine as the rendered
-                preview.
-              </div>
-            )}
-          </div>
+          )}
 
           {warning && <div style={styles.warning}>{warning}</div>}
           {stats && (stats.droppedThin > 0 || stats.droppedSmall > 0) && (
@@ -420,6 +365,107 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
                 <span>Dropped {stats.droppedSmall} speck(s)</span>
               )}
             </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen((v) => !v)}
+            style={styles.advancedToggle}
+          >
+            {advancedOpen ? '▾' : '▸'} Advanced (manufacturability)
+          </button>
+
+          {advancedOpen && (
+            <>
+              <div style={styles.control}>
+                <label style={styles.label}>
+                  Nozzle diameter: {nozzleDiameterMm.toFixed(2)} mm
+                </label>
+                <div style={styles.nozzleRow}>
+                  {NOZZLE_OPTIONS.map((d) => {
+                    const active = nozzleDiameterMm === d
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => handleNozzleChange(d)}
+                        style={{
+                          ...styles.nozzleChip,
+                          ...(active ? styles.nozzleChipActive : null),
+                        }}
+                      >
+                        {d === 0 ? 'off' : d.toFixed(2)}
+                      </button>
+                    )
+                  })}
+                </div>
+                <div style={styles.subnote}>
+                  Rounds sharp corners below this radius so the printer can
+                  reproduce them.
+                </div>
+                {nozzleDiameterMm === 0 && (
+                  <div style={styles.previewMismatchWarn}>
+                    The finished product will not be as fine as the rendered
+                    preview.
+                  </div>
+                )}
+              </div>
+
+              <div style={styles.control}>
+                <label style={styles.label}>
+                  Min island area: {minIslandAreaMm2.toFixed(1)} mm²
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="10"
+                  step="0.1"
+                  value={minIslandAreaMm2}
+                  onChange={(e) => {
+                    setMinIslandAreaMm2(Number(e.target.value))
+                    setMinIslandOverridden(true)
+                  }}
+                  style={styles.slider}
+                />
+                <div style={styles.subnote}>
+                  Drops islands smaller than this — kills speckles from JPG traces.
+                </div>
+                {minIslandAreaMm2 === 0 && (
+                  <div style={styles.previewMismatchWarn}>
+                    The finished product will not be as fine as the rendered
+                    preview.
+                  </div>
+                )}
+              </div>
+
+              <div style={styles.control}>
+                <label style={styles.label}>
+                  Min feature width: {minFeatureWidthMm.toFixed(2)} mm
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="5"
+                  step="0.1"
+                  value={minFeatureWidthMm}
+                  onChange={(e) => {
+                    setMinFeatureWidthMm(Number(e.target.value))
+                    setMinFeatureOverridden(true)
+                  }}
+                  style={styles.slider}
+                />
+                <div style={styles.subnote}>
+                  Drops islands whose narrowest part is below this — kills hairlines
+                  the printer can't make as walls.
+                </div>
+                {minFeatureWidthMm === 0 && (
+                  <div style={styles.previewMismatchWarn}>
+                    The finished product will not be as fine as the rendered
+                    preview.
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </>
       )}
@@ -573,5 +619,36 @@ const styles = {
     borderRadius: '4px',
     fontSize: '11px',
     lineHeight: '1.4',
+  },
+  thumbnailWrap: {
+    marginBottom: '12px',
+  },
+  thumbnail: {
+    width: '100%',
+    aspectRatio: '1 / 1',
+    backgroundColor: '#ffffff',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: '#444',
+    borderRadius: '4px',
+    objectFit: 'contain',
+    padding: '8px',
+    boxSizing: 'border-box',
+  },
+  advancedToggle: {
+    display: 'block',
+    width: '100%',
+    marginTop: '8px',
+    padding: '8px 10px',
+    fontSize: '12px',
+    color: '#ccc',
+    backgroundColor: 'transparent',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: '#444',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    textAlign: 'left',
+    fontFamily: 'inherit',
   },
 }
