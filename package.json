@@ -6,20 +6,29 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "sync-fixtures": "node scripts/sync-fixtures.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^9.92.0",
     "@react-three/fiber": "^8.15.0",
     "@react-three/postprocessing": "^2.15.0",
+    "clipper-lib": "^6.4.2",
+    "jimp": "^0.22.12",
     "jszip": "^3.10.1",
     "postprocessing": "^6.34.0",
+    "potrace": "^2.1.8",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "svgpath": "^2.6.0",
     "three": "^0.160.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
-    "vite": "^5.0.0"
+    "jsdom": "^24.0.0",
+    "vite": "^5.0.0",
+    "vitest": "^1.6.0"
   }
 }

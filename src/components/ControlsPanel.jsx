@@ -14,6 +14,7 @@ import { useState } from 'react'
  * - Auto-orbit toggle
  */
 export default function ControlsPanel({
+  topSection,
   selectedPreset,
   onPresetChange,
   onCustomUpload,
@@ -106,6 +107,8 @@ export default function ControlsPanel({
   return (
     <div style={styles.panel}>
       <h2 style={styles.title}>Infinity Mirror Configurator</h2>
+
+      {topSection}
 
       {/* Icon Selection */}
       <div style={styles.section}>

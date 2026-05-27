@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <!-- Concentric ring + dot in the middle: outer disc, middle annulus hole, inner disc.
+       Single <path> with three subpaths + fill-rule="evenodd" makes the middle ring
+       a hole and the inner disc a solid via XOR parity. -->
+  <path d="M 100 20 A 80 80 0 1 0 100 180 A 80 80 0 1 0 100 20 Z
+           M 100 50 A 50 50 0 1 0 100 150 A 50 50 0 1 0 100 50 Z
+           M 100 80 A 20 20 0 1 0 100 120 A 20 20 0 1 0 100 80 Z"
+        fill="#000000" fill-rule="evenodd"/>
+</svg>

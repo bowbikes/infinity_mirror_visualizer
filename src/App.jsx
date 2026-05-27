@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import InfinityMirrorScene from './components/InfinityMirrorScene'
 import ControlsPanel from './components/ControlsPanel'
+import PreprocessPanel from './components/PreprocessPanel'
 import ExportModal from './components/ExportModal'
 import {
   serializeConfiguration,
@@ -67,6 +68,14 @@ function App() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const canvasRef = useRef(null)
+
+  // Receive the preprocessed manufacturable black SVG from PreprocessPanel.
+  // Flips to 'custom' shape so the 3D scene picks it up.
+  const handlePreprocessed = (manufacturableSvg) => {
+    setCustomSvgPath(manufacturableSvg)
+    setShapeType('custom')
+    setSelectedPreset('custom')
+  }
 
   // Update shape type when preset changes
   useEffect(() => {
@@ -271,8 +280,11 @@ function App() {
         </div>
       </div>
 
-      {/* Controls Panel */}
+      {/* Controls Panel — preprocessing section injected at the top */}
       <ControlsPanel
+        topSection={
+          <PreprocessPanel onPreprocessed={handlePreprocessed} />
+        }
         selectedPreset={selectedPreset}
         onPresetChange={handlePresetChange}
         onCustomUpload={handleCustomUpload}
