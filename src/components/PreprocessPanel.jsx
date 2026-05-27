@@ -74,6 +74,15 @@ export default function PreprocessPanel({
   onError,
   onFileNameChange,
 }) {
+  // Warm the lazy preprocess module on mount. The module pulls in
+  // jimp/potrace/clipper-lib (~200 KB after gzip) and isn't fetched
+  // until a user uploads a file. Kicking the import off here means
+  // the network round-trip happens while the user is still hunting
+  // for their file in the OS picker, not after they pick.
+  useEffect(() => {
+    getPreprocessModule()
+  }, [])
+
   const [stage, setStage] = useState('idle') // 'idle' | 'picking' | 'ready'
   const [busy, setBusy] = useState(false)
   const [warning, setWarning] = useState(null)
@@ -389,7 +398,7 @@ export default function PreprocessPanel({
             <div style={styles.thumbnailWrap}>
               <div style={styles.thumbnailHeader}>
                 <span style={styles.subnote}>
-                  Preview — black = material, white = cut away.
+                  Preview — black = illuminated segments, white = mirror base.
                 </span>
                 <button
                   type="button"

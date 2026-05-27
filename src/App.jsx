@@ -426,6 +426,12 @@ function App() {
             fov: 50
           }}
           dpr={[1, 2]} // Performance: limit pixel ratio
+          // Pause continuous rendering while the Custom Art modal is
+          // open. Three.js was eating enough main-thread time that the
+          // OS file picker would lag noticeably after clicking Choose
+          // file — freezing the scene during upload lets the dialog
+          // open instantly. Scene resumes on modal close.
+          frameloop={isCustomArtModalOpen ? 'never' : 'always'}
           gl={{
             antialias: true,
             alpha: false,
