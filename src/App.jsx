@@ -28,6 +28,47 @@ import {
 // Shape presets - using built-in Three.js shapes instead of SVG files
 const SHAPE_PRESETS = ['hexagon', 'circle', 'star']
 
+// Hash-encoded config keys, in order. Adding a new field to share via URL?
+// Append it here and add the corresponding setter to applyHashConfig. The
+// custom-art SVG is intentionally NOT shareable — it can be megabytes and
+// the user re-uploads it per session.
+const SHARED_KEYS = [
+  'selectedPreset',
+  'wallColor',
+  'frameColor',
+  'lightColor',
+  'frameWidth',
+  'frameHeight',
+  'units',
+  'frameDepthMm',
+  'iconScale',
+  'iconRotation',
+  'iconPositionX',
+  'iconPositionY',
+  'edgeThickness',
+  'reflectionDepth',
+  'autoOrbit',
+  'enableBloom',
+]
+const HASH_PREFIX = '#cfg='
+
+function encodeConfig(state) {
+  const subset = {}
+  for (const k of SHARED_KEYS) subset[k] = state[k]
+  // btoa is fine for our ASCII JSON — no Unicode in any of these values.
+  return btoa(JSON.stringify(subset))
+}
+function decodeConfigFromHash() {
+  if (typeof window === 'undefined') return null
+  const h = window.location.hash
+  if (!h.startsWith(HASH_PREFIX)) return null
+  try {
+    return JSON.parse(atob(h.slice(HASH_PREFIX.length)))
+  } catch {
+    return null
+  }
+}
+
 // Single source of truth for every starting value. Used both for useState
 // init and for the "Reset all" button. Adding a new control? Add its
 // default here and the reset path picks it up for free.
@@ -48,41 +89,53 @@ const DEFAULTS = {
   edgeThickness: 0.2,
   reflectionDepth: 7,
   autoOrbit: false,
+  enableBloom: false,
 }
 
 function App() {
+  // Read once from the hash at mount time. If we deferred this to a
+  // useEffect, the encode-on-change effect would fire first with the
+  // still-default state and clobber the hash before the restored state
+  // had time to propagate.
+  const _initial = (() => {
+    const cfg = decodeConfigFromHash()
+    return (key) => (cfg && cfg[key] != null ? cfg[key] : DEFAULTS[key])
+  })()
+
   // Icon selection
-  const [selectedPreset, setSelectedPreset] = useState(DEFAULTS.selectedPreset)
-  const [shapeType, setShapeType] = useState(DEFAULTS.shapeType)
+  const [selectedPreset, setSelectedPreset] = useState(_initial('selectedPreset'))
+  const [shapeType, setShapeType] = useState(
+    _initial('selectedPreset') === 'custom' ? DEFAULTS.shapeType : _initial('selectedPreset')
+  )
   const [customSvgPath, setCustomSvgPath] = useState(null)
 
   // Colors
-  const [wallColor, setWallColor] = useState(DEFAULTS.wallColor)
-  const [frameColor, setFrameColor] = useState(DEFAULTS.frameColor)
-  const [lightColor, setLightColor] = useState(DEFAULTS.lightColor)
+  const [wallColor, setWallColor] = useState(_initial('wallColor'))
+  const [frameColor, setFrameColor] = useState(_initial('frameColor'))
+  const [lightColor, setLightColor] = useState(_initial('lightColor'))
 
   // Frame dimensions
-  const [frameWidth, setFrameWidth] = useState(DEFAULTS.frameWidth)
-  const [frameHeight, setFrameHeight] = useState(DEFAULTS.frameHeight)
-  const [units, setUnits] = useState(DEFAULTS.units)
+  const [frameWidth, setFrameWidth] = useState(_initial('frameWidth'))
+  const [frameHeight, setFrameHeight] = useState(_initial('frameHeight'))
+  const [units, setUnits] = useState(_initial('units'))
 
   // Frame depth (slider value matches what the user reads in the label).
   // Internally the box decomposes this into mirror spacing + 10mm of frame
   // thickness when building geometry.
-  const [frameDepthMm, setFrameDepthMm] = useState(DEFAULTS.frameDepthMm)
+  const [frameDepthMm, setFrameDepthMm] = useState(_initial('frameDepthMm'))
 
   // Icon transform
-  const [iconScale, setIconScale] = useState(DEFAULTS.iconScale)
-  const [iconRotation, setIconRotation] = useState(DEFAULTS.iconRotation)
-  const [iconPositionX, setIconPositionX] = useState(DEFAULTS.iconPositionX)
-  const [iconPositionY, setIconPositionY] = useState(DEFAULTS.iconPositionY)
-  const [edgeThickness, setEdgeThickness] = useState(DEFAULTS.edgeThickness)
+  const [iconScale, setIconScale] = useState(_initial('iconScale'))
+  const [iconRotation, setIconRotation] = useState(_initial('iconRotation'))
+  const [iconPositionX, setIconPositionX] = useState(_initial('iconPositionX'))
+  const [iconPositionY, setIconPositionY] = useState(_initial('iconPositionY'))
+  const [edgeThickness, setEdgeThickness] = useState(_initial('edgeThickness'))
 
   // Reflection depth
-  const [reflectionDepth, setReflectionDepth] = useState(DEFAULTS.reflectionDepth)
+  const [reflectionDepth, setReflectionDepth] = useState(_initial('reflectionDepth'))
 
   // Camera
-  const [autoOrbit, setAutoOrbit] = useState(DEFAULTS.autoOrbit)
+  const [autoOrbit, setAutoOrbit] = useState(_initial('autoOrbit'))
 
   // Reset every control back to its DEFAULTS value. Deliberately leaves
   // customSvgPath alone — losing a hard-won upload to an accidental click
@@ -105,7 +158,62 @@ function App() {
   }
 
   // Performance settings
-  const [enableBloom, setEnableBloom] = useState(false)
+  const [enableBloom, setEnableBloom] = useState(
+    _initial('enableBloom') ?? false
+  )
+
+  // Mirror state into the URL hash via replaceState so each tweak is
+  // bookmarkable but doesn't pollute Back-button history.
+  useEffect(() => {
+    const encoded = encodeConfig({
+      selectedPreset,
+      wallColor,
+      frameColor,
+      lightColor,
+      frameWidth,
+      frameHeight,
+      units,
+      frameDepthMm,
+      iconScale,
+      iconRotation,
+      iconPositionX,
+      iconPositionY,
+      edgeThickness,
+      reflectionDepth,
+      autoOrbit,
+      enableBloom,
+    })
+    const newHash = `${HASH_PREFIX}${encoded}`
+    if (window.location.hash !== newHash) {
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${newHash}`)
+    }
+  }, [
+    selectedPreset,
+    wallColor,
+    frameColor,
+    lightColor,
+    frameWidth,
+    frameHeight,
+    units,
+    frameDepthMm,
+    iconScale,
+    iconRotation,
+    iconPositionX,
+    iconPositionY,
+    edgeThickness,
+    reflectionDepth,
+    autoOrbit,
+    enableBloom,
+  ])
+
+  const handleCopyShareLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      return true
+    } catch {
+      return false
+    }
+  }
 
   // Export modal
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
@@ -341,6 +449,7 @@ function App() {
         onExportClick={handleExportClick}
         defaults={DEFAULTS}
         onResetAll={handleResetAll}
+        onCopyShareLink={handleCopyShareLink}
       />
 
       {/* Export Modal */}

@@ -151,7 +151,18 @@ export default function ControlsPanel({
   onExportClick,
   defaults,
   onResetAll,
+  onCopyShareLink,
 }) {
+  // Ephemeral "Copied!" feedback on the share-link button.
+  const [shareCopied, setShareCopied] = useState(false)
+  const handleShareClick = async () => {
+    const ok = await onCopyShareLink?.()
+    if (ok) {
+      setShareCopied(true)
+      setTimeout(() => setShareCopied(false), 1500)
+    }
+  }
+
   // Pick a readable text color against the export button's background.
   const getContrastColor = (hexColor) => {
     const hex = hexColor.replace('#', '')
@@ -417,6 +428,14 @@ export default function ControlsPanel({
             Export your configuration for manufacturing with tamper protection
           </small>
         </div>
+        <button
+          type="button"
+          onClick={handleShareClick}
+          style={styles.shareLinkButton}
+          title="Copy a URL that restores this exact configuration. Custom-art uploads are not included."
+        >
+          {shareCopied ? 'Link copied!' : 'Copy share link'}
+        </button>
       </div>
     </div>
   )
@@ -614,5 +633,19 @@ const styles = {
     fontSize: '11px',
     lineHeight: '1.4',
     textAlign: 'center'
-  }
+  },
+  shareLinkButton: {
+    width: '100%',
+    marginTop: '12px',
+    padding: '8px',
+    fontSize: '12px',
+    backgroundColor: 'transparent',
+    color: '#ccc',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: '#555',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
 }
