@@ -1,23 +1,14 @@
-import { useState } from 'react'
-
 /**
- * ControlsPanel - UI controls for customizing the infinity mirror
+ * ControlsPanel — visualizer customization controls.
  *
- * Controls:
- * - Icon selection (presets + custom upload)
- * - Wall color
- * - Frame color
- * - Mirror spacing
- * - Light color
- * - SVG transform (scale, rotation, position)
- * - Reflection depth
- * - Auto-orbit toggle
+ * Custom art upload + preprocessing live in the `topSection` (PreprocessPanel)
+ * injected from App.jsx. This panel only renders the preset picker, colors,
+ * frame dimensions, transform, camera, and export controls.
  */
 export default function ControlsPanel({
   topSection,
   selectedPreset,
   onPresetChange,
-  onCustomUpload,
   wallColor,
   onWallColorChange,
   frameColor,
@@ -46,60 +37,16 @@ export default function ControlsPanel({
   onReflectionDepthChange,
   autoOrbit,
   onAutoOrbitChange,
-  onExportClick
+  onExportClick,
 }) {
-  const [uploadError, setUploadError] = useState(null)
-
-  // Helper function to determine text color based on background brightness
+  // Pick a readable text color against the export button's background.
   const getContrastColor = (hexColor) => {
-    // Remove # if present
     const hex = hexColor.replace('#', '')
-
-    // Convert to RGB
     const r = parseInt(hex.substr(0, 2), 16)
     const g = parseInt(hex.substr(2, 2), 16)
     const b = parseInt(hex.substr(4, 2), 16)
-
-    // Calculate relative luminance
     const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-
-    // Return black for light colors, white for dark colors
     return luminance > 0.5 ? '#000000' : '#ffffff'
-  }
-
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-
-    // Check file type using MIME type and extension
-    const isSvg = file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')
-
-    if (!isSvg) {
-      setUploadError('Invalid file type. Please upload an SVG file (.svg)')
-      setTimeout(() => setUploadError(null), 5000) // Clear error after 5 seconds
-      e.target.value = '' // Reset file input
-      return
-    }
-
-    try {
-      const text = await file.text()
-
-      // Validate that it's actually SVG content
-      if (!text.includes('<svg') && !text.includes('<path')) {
-        setUploadError('File does not appear to contain valid SVG content')
-        setTimeout(() => setUploadError(null), 5000)
-        e.target.value = ''
-        return
-      }
-
-      onCustomUpload(text)
-      setUploadError(null)
-    } catch (error) {
-      setUploadError('Failed to read SVG file: ' + error.message)
-      setTimeout(() => setUploadError(null), 5000)
-      console.error(error)
-      e.target.value = ''
-    }
   }
 
   return (
@@ -126,25 +73,12 @@ export default function ControlsPanel({
         </div>
 
         {selectedPreset === 'custom' && (
-          <>
-            <div style={styles.control}>
-              <label style={styles.label}>Upload SVG (already-black):</label>
-              <input
-                type="file"
-                accept=".svg,image/svg+xml"
-                onChange={handleFileUpload}
-                style={styles.fileInput}
-              />
-              <div style={styles.note}>
-                Custom art renders as a flat fill matching the laser cut.
-                For JPG / colored / line-art inputs, use the Custom Art
-                preprocessing panel above instead.
-              </div>
-              {uploadError && (
-                <div style={styles.error}>{uploadError}</div>
-              )}
-            </div>
-          </>
+          <div style={styles.note}>
+            Upload custom art via the <strong>Custom Art</strong> panel at
+            the top. JPGs, PNGs, colored SVGs, and line-art SVGs all flow
+            through the manufacturability preprocessor and render as the
+            flat fill the laser will cut.
+          </div>
         )}
       </div>
 
