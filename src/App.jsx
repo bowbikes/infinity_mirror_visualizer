@@ -28,39 +28,81 @@ import {
 // Shape presets - using built-in Three.js shapes instead of SVG files
 const SHAPE_PRESETS = ['hexagon', 'circle', 'star']
 
+// Single source of truth for every starting value. Used both for useState
+// init and for the "Reset all" button. Adding a new control? Add its
+// default here and the reset path picks it up for free.
+const DEFAULTS = {
+  selectedPreset: 'hexagon',
+  shapeType: 'hexagon',
+  wallColor: '#fffceb',
+  frameColor: '#424243',
+  lightColor: '#00ffff',
+  frameWidth: 300, // mm
+  frameHeight: 300, // mm
+  units: 'mm',
+  frameDepthMm: 30,
+  iconScale: 1.0,
+  iconRotation: 0,
+  iconPositionX: 0,
+  iconPositionY: 0,
+  edgeThickness: 0.2,
+  reflectionDepth: 7,
+  autoOrbit: false,
+}
+
 function App() {
   // Icon selection
-  const [selectedPreset, setSelectedPreset] = useState('hexagon')
-  const [shapeType, setShapeType] = useState('hexagon')
+  const [selectedPreset, setSelectedPreset] = useState(DEFAULTS.selectedPreset)
+  const [shapeType, setShapeType] = useState(DEFAULTS.shapeType)
   const [customSvgPath, setCustomSvgPath] = useState(null)
 
   // Colors
-  const [wallColor, setWallColor] = useState('#fffceb')
-  const [frameColor, setFrameColor] = useState('#424243')
-  const [lightColor, setLightColor] = useState('#00ffff')
+  const [wallColor, setWallColor] = useState(DEFAULTS.wallColor)
+  const [frameColor, setFrameColor] = useState(DEFAULTS.frameColor)
+  const [lightColor, setLightColor] = useState(DEFAULTS.lightColor)
 
   // Frame dimensions
-  const [frameWidth, setFrameWidth] = useState(300) // mm
-  const [frameHeight, setFrameHeight] = useState(300) // mm
-  const [units, setUnits] = useState('mm') // 'mm' or 'in'
+  const [frameWidth, setFrameWidth] = useState(DEFAULTS.frameWidth)
+  const [frameHeight, setFrameHeight] = useState(DEFAULTS.frameHeight)
+  const [units, setUnits] = useState(DEFAULTS.units)
 
   // Frame depth (slider value matches what the user reads in the label).
   // Internally the box decomposes this into mirror spacing + 10mm of frame
   // thickness when building geometry.
-  const [frameDepthMm, setFrameDepthMm] = useState(30) // mm
+  const [frameDepthMm, setFrameDepthMm] = useState(DEFAULTS.frameDepthMm)
 
   // Icon transform
-  const [iconScale, setIconScale] = useState(1.0)
-  const [iconRotation, setIconRotation] = useState(0) // degrees
-  const [iconPositionX, setIconPositionX] = useState(0)
-  const [iconPositionY, setIconPositionY] = useState(0)
-  const [edgeThickness, setEdgeThickness] = useState(0.2)
+  const [iconScale, setIconScale] = useState(DEFAULTS.iconScale)
+  const [iconRotation, setIconRotation] = useState(DEFAULTS.iconRotation)
+  const [iconPositionX, setIconPositionX] = useState(DEFAULTS.iconPositionX)
+  const [iconPositionY, setIconPositionY] = useState(DEFAULTS.iconPositionY)
+  const [edgeThickness, setEdgeThickness] = useState(DEFAULTS.edgeThickness)
 
   // Reflection depth
-  const [reflectionDepth, setReflectionDepth] = useState(7)
+  const [reflectionDepth, setReflectionDepth] = useState(DEFAULTS.reflectionDepth)
 
   // Camera
-  const [autoOrbit, setAutoOrbit] = useState(false)
+  const [autoOrbit, setAutoOrbit] = useState(DEFAULTS.autoOrbit)
+
+  // Reset every control back to its DEFAULTS value. Deliberately leaves
+  // customSvgPath alone — losing a hard-won upload to an accidental click
+  // would be worse than the inconsistency.
+  const handleResetAll = () => {
+    setWallColor(DEFAULTS.wallColor)
+    setFrameColor(DEFAULTS.frameColor)
+    setLightColor(DEFAULTS.lightColor)
+    setFrameWidth(DEFAULTS.frameWidth)
+    setFrameHeight(DEFAULTS.frameHeight)
+    setUnits(DEFAULTS.units)
+    setFrameDepthMm(DEFAULTS.frameDepthMm)
+    setIconScale(DEFAULTS.iconScale)
+    setIconRotation(DEFAULTS.iconRotation)
+    setIconPositionX(DEFAULTS.iconPositionX)
+    setIconPositionY(DEFAULTS.iconPositionY)
+    setEdgeThickness(DEFAULTS.edgeThickness)
+    setReflectionDepth(DEFAULTS.reflectionDepth)
+    setAutoOrbit(DEFAULTS.autoOrbit)
+  }
 
   // Performance settings
   const [enableBloom, setEnableBloom] = useState(false)
@@ -297,6 +339,8 @@ function App() {
         autoOrbit={autoOrbit}
         onAutoOrbitChange={setAutoOrbit}
         onExportClick={handleExportClick}
+        defaults={DEFAULTS}
+        onResetAll={handleResetAll}
       />
 
       {/* Export Modal */}

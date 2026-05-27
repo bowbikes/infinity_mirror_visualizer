@@ -5,6 +5,117 @@
  * injected from App.jsx. This panel only renders the preset picker, colors,
  * frame dimensions, transform, camera, and export controls.
  */
+import { useEffect, useState } from 'react'
+
+/**
+ * Slider + numeric input pair with a tooltip indicator. Double-clicking the
+ * label resets the value to `defaultValue` — saves users who slid something
+ * to an extreme and want the starting point back. Numeric input mirrors the
+ * slider; both clamp to [min, max] on blur.
+ */
+function SliderControl({
+  label,
+  value,
+  defaultValue,
+  min,
+  max,
+  step,
+  onChange,
+  format,
+  tooltip,
+  suffix,
+}) {
+  const display = format ? format(value) : value
+  const handleNumeric = (raw) => {
+    if (raw === '' || raw === '-') return // mid-typing; ignore
+    const n = Number(raw)
+    if (!Number.isFinite(n)) return
+    const clamped = Math.min(max, Math.max(min, n))
+    onChange(clamped)
+  }
+  return (
+    <div style={styles.control}>
+      <div style={styles.sliderHeaderRow}>
+        <label
+          style={styles.label}
+          title={tooltip}
+          onDoubleClick={() => onChange(defaultValue)}
+        >
+          {label}: {display}
+          {suffix ?? ''}
+          {tooltip && <span style={styles.helpIcon} title={tooltip}> ⓘ</span>}
+        </label>
+        <input
+          type="number"
+          value={value}
+          min={min}
+          max={max}
+          step={step}
+          onChange={(e) => handleNumeric(e.target.value)}
+          style={styles.numericInput}
+        />
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        style={styles.slider}
+      />
+    </div>
+  )
+}
+
+/**
+ * Hex color text input with validation: while typing the value is held in
+ * local state; on blur (or Enter) it's parsed — valid 3- or 6-digit hex
+ * commits upstream, anything else reverts and flashes a red border.
+ */
+function HexInput({ value, onChange }) {
+  const [draft, setDraft] = useState(value)
+  const [invalid, setInvalid] = useState(false)
+  // Re-sync when the canonical value changes from outside (e.g. color
+  // picker).
+  useEffect(() => {
+    setDraft(value)
+    setInvalid(false)
+  }, [value])
+  const commit = () => {
+    const cleaned = draft.trim()
+    if (/^#?[0-9a-fA-F]{6}$/.test(cleaned) || /^#?[0-9a-fA-F]{3}$/.test(cleaned)) {
+      const withHash = cleaned.startsWith('#') ? cleaned : `#${cleaned}`
+      onChange(withHash.toLowerCase())
+      setInvalid(false)
+    } else {
+      setDraft(value)
+      setInvalid(true)
+    }
+  }
+  return (
+    <input
+      type="text"
+      value={draft}
+      onChange={(e) => {
+        setDraft(e.target.value)
+        if (invalid) setInvalid(false)
+      }}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.currentTarget.blur()
+        }
+      }}
+      style={{
+        ...styles.textInput,
+        ...(invalid ? styles.textInputInvalid : null),
+      }}
+      placeholder="#000000"
+    />
+  )
+}
+
 export default function ControlsPanel({
   customArtSection,
   selectedPreset,
@@ -38,6 +149,8 @@ export default function ControlsPanel({
   autoOrbit,
   onAutoOrbitChange,
   onExportClick,
+  defaults,
+  onResetAll,
 }) {
   // Pick a readable text color against the export button's background.
   const getContrastColor = (hexColor) => {
@@ -51,7 +164,17 @@ export default function ControlsPanel({
 
   return (
     <div style={styles.panel}>
-      <h2 style={styles.title}>Infinity Mirror Configurator</h2>
+      <div style={styles.titleRow}>
+        <h2 style={styles.title}>Infinity Mirror Configurator</h2>
+        <button
+          type="button"
+          onClick={onResetAll}
+          style={styles.resetAllButton}
+          title="Reset every control to its starting value. Custom art is preserved."
+        >
+          Reset all
+        </button>
+      </div>
 
       {/* Icon Selection */}
       <div style={styles.section}>
@@ -87,13 +210,7 @@ export default function ControlsPanel({
             onChange={(e) => onWallColorChange(e.target.value)}
             style={styles.colorInput}
           />
-          <input
-            type="text"
-            value={wallColor}
-            onChange={(e) => onWallColorChange(e.target.value)}
-            style={styles.textInput}
-            placeholder="#151515"
-          />
+          <HexInput value={wallColor} onChange={onWallColorChange} />
         </div>
 
         <div style={styles.control}>
@@ -104,13 +221,7 @@ export default function ControlsPanel({
             onChange={(e) => onFrameColorChange(e.target.value)}
             style={styles.colorInput}
           />
-          <input
-            type="text"
-            value={frameColor}
-            onChange={(e) => onFrameColorChange(e.target.value)}
-            style={styles.textInput}
-            placeholder="#222222"
-          />
+          <HexInput value={frameColor} onChange={onFrameColorChange} />
         </div>
 
         <div style={styles.control}>
@@ -121,13 +232,7 @@ export default function ControlsPanel({
             onChange={(e) => onLightColorChange(e.target.value)}
             style={styles.colorInput}
           />
-          <input
-            type="text"
-            value={lightColor}
-            onChange={(e) => onLightColorChange(e.target.value)}
-            style={styles.textInput}
-            placeholder="#00ffff"
-          />
+          <HexInput value={lightColor} onChange={onLightColorChange} />
         </div>
       </div>
 
@@ -136,147 +241,146 @@ export default function ControlsPanel({
         <h3 style={styles.sectionTitle}>Frame Controls</h3>
 
         <div style={styles.control}>
-          <label style={styles.label}>
-            <input
-              type="checkbox"
-              checked={units === "in"}
-              onChange={(e) =>
-                onUnitsChange(e.target.checked ? "in" : "mm")
-              }
-              style={styles.checkbox}
-            />
-            Use inches
-          </label>
+          <label style={styles.label}>Units:</label>
+          <div style={styles.unitToggle}>
+            <button
+              type="button"
+              onClick={() => onUnitsChange('mm')}
+              style={{
+                ...styles.unitToggleButton,
+                ...(units === 'mm' ? styles.unitToggleButtonActive : null),
+              }}
+            >
+              mm
+            </button>
+            <button
+              type="button"
+              onClick={() => onUnitsChange('in')}
+              style={{
+                ...styles.unitToggleButton,
+                ...(units === 'in' ? styles.unitToggleButtonActive : null),
+              }}
+            >
+              in
+            </button>
+          </div>
         </div>
 
+        <SliderControl
+          label="Width"
+          value={frameWidth}
+          defaultValue={defaults.frameWidth}
+          min={100}
+          max={600}
+          step={10}
+          onChange={onFrameWidthChange}
+          format={(v) =>
+            units === 'mm' ? `${v}mm` : `${(v / 25.4).toFixed(2)}in`
+          }
+          tooltip="Outer width of the mirror frame. Double-click the label to reset."
+        />
 
-        <div style={styles.control}>
-          <label style={styles.label}>
-            Width: {units === 'mm' ? `${frameWidth}mm` : `${(frameWidth / 25.4).toFixed(2)}in`}
-          </label>
-          <input
-            type="range"
-            min="100"
-            max="600"
-            step="10"
-            value={frameWidth}
-            onChange={(e) => onFrameWidthChange(Number(e.target.value))}
-            style={styles.slider}
-          />
-        </div>
+        <SliderControl
+          label="Height"
+          value={frameHeight}
+          defaultValue={defaults.frameHeight}
+          min={100}
+          max={600}
+          step={10}
+          onChange={onFrameHeightChange}
+          format={(v) =>
+            units === 'mm' ? `${v}mm` : `${(v / 25.4).toFixed(2)}in`
+          }
+          tooltip="Outer height of the mirror frame."
+        />
 
-        <div style={styles.control}>
-          <label style={styles.label}>
-            Height: {units === 'mm' ? `${frameHeight}mm` : `${(frameHeight / 25.4).toFixed(2)}in`}
-          </label>
-          <input
-            type="range"
-            min="100"
-            max="600"
-            step="10"
-            value={frameHeight}
-            onChange={(e) => onFrameHeightChange(Number(e.target.value))}
-            style={styles.slider}
-          />
-        </div>
+        <SliderControl
+          label="Frame Depth"
+          value={frameDepthMm}
+          defaultValue={defaults.frameDepthMm}
+          min={21}
+          max={130}
+          step={2}
+          onChange={onFrameDepthChange}
+          format={(v) => `${v}mm`}
+          tooltip="Distance between the two-way and back mirrors. Larger depth makes the apparent tunnel longer."
+        />
 
-        <div style={styles.control}>
-          <label style={styles.label}>
-            Frame Depth: {frameDepthMm}mm
-          </label>
-          <input
-            type="range"
-            min="21"
-            max="130"
-            step="2"
-            value={frameDepthMm}
-            onChange={(e) => onFrameDepthChange(Number(e.target.value))}
-            style={styles.slider}
-          />
-        </div>
-
-        <div style={styles.control}>
-          <label style={styles.label}>Layers: {reflectionDepth}</label>
-          <input
-            type="range"
-            min="4"
-            max="20"
-            step="1"
-            value={reflectionDepth}
-            onChange={(e) => onReflectionDepthChange(Number(e.target.value))}
-            style={styles.slider}
-          />
-        </div>
+        <SliderControl
+          label="Layers"
+          value={reflectionDepth}
+          defaultValue={defaults.reflectionDepth}
+          min={4}
+          max={20}
+          step={1}
+          onChange={onReflectionDepthChange}
+          tooltip="Number of reflection iterations rendered. Lower this on mobile or older GPUs if the scene stutters."
+        />
       </div>
 
       {/* SVG Transform */}
       <div style={styles.section}>
         <h3 style={styles.sectionTitle}>Icon Transform</h3>
 
-        <div style={styles.control}>
-          <label style={styles.label}>Scale: {iconScale.toFixed(2)}</label>
-          <input
-            type="range"
-            min="0.1"
-            max="10.0"
-            step="0.1"
-            value={iconScale}
-            onChange={(e) => onIconScaleChange(Number(e.target.value))}
-            style={styles.slider}
-          />
-        </div>
+        <SliderControl
+          label="Scale"
+          value={iconScale}
+          defaultValue={defaults.iconScale}
+          min={0.1}
+          max={10}
+          step={0.1}
+          onChange={onIconScaleChange}
+          format={(v) => v.toFixed(2)}
+          tooltip="Icon size as a multiple of its source. 1.00 = source size."
+        />
 
-        <div style={styles.control}>
-          <label style={styles.label}>Rotation: {Math.round(iconRotation)}°</label>
-          <input
-            type="range"
-            min="0"
-            max="360"
-            step="5"
-            value={iconRotation}
-            onChange={(e) => onIconRotationChange(Number(e.target.value))}
-            style={styles.slider}
-          />
-        </div>
+        <SliderControl
+          label="Rotation"
+          value={iconRotation}
+          defaultValue={defaults.iconRotation}
+          min={0}
+          max={360}
+          step={5}
+          onChange={onIconRotationChange}
+          format={(v) => `${Math.round(v)}°`}
+          tooltip="Icon rotation in degrees."
+        />
 
-        <div style={styles.control}>
-          <label style={styles.label}>Position X: {iconPositionX.toFixed(1)}</label>
-          <input
-            type="range"
-            min="-1.5"
-            max="1.5"
-            step="0.1"
-            value={iconPositionX}
-            onChange={(e) => onIconPositionXChange(Number(e.target.value))}
-            style={styles.slider}
-          />
-        </div>
+        <SliderControl
+          label="Position X"
+          value={iconPositionX}
+          defaultValue={defaults.iconPositionX}
+          min={-1.5}
+          max={1.5}
+          step={0.1}
+          onChange={onIconPositionXChange}
+          format={(v) => v.toFixed(1)}
+          tooltip="Horizontal offset, in frame widths. 0 = centered."
+        />
 
-        <div style={styles.control}>
-          <label style={styles.label}>Position Y: {iconPositionY.toFixed(1)}</label>
-          <input
-            type="range"
-            min="-1.5"
-            max="1.5"
-            step="0.1"
-            value={iconPositionY}
-            onChange={(e) => onIconPositionYChange(Number(e.target.value))}
-            style={styles.slider}
-          />
-        </div>
+        <SliderControl
+          label="Position Y"
+          value={iconPositionY}
+          defaultValue={defaults.iconPositionY}
+          min={-1.5}
+          max={1.5}
+          step={0.1}
+          onChange={onIconPositionYChange}
+          format={(v) => v.toFixed(1)}
+          tooltip="Vertical offset, in frame heights. 0 = centered."
+        />
 
-        <div style={styles.control}>
-          <label style={styles.label}>Edge Thickness: {edgeThickness.toFixed(2)}</label>
-          <input
-            type="range"
-            min="0.05"
-            max="1.0"
-            step="0.05"
-            value={edgeThickness}
-            onChange={(e) => onEdgeThicknessChange(Number(e.target.value))}
-            style={styles.slider}
-          />
-        </div>
+        <SliderControl
+          label="Edge Thickness"
+          value={edgeThickness}
+          defaultValue={defaults.edgeThickness}
+          min={0.05}
+          max={1}
+          step={0.05}
+          onChange={onEdgeThicknessChange}
+          format={(v) => v.toFixed(2)}
+          tooltip="Bevel depth at the icon's outline. Catches the light along the rim — larger values read as a thicker glowing edge."
+        />
       </div>
 
       {/* Auto-orbit */}
@@ -314,14 +418,6 @@ export default function ControlsPanel({
           </small>
         </div>
       </div>
-
-      {/* Performance note */}
-      <div style={styles.note}>
-        <small>
-          <strong>Performance tips:</strong> Reduce reflection layers for better mobile performance.
-          The visualizer is optimized for mid-range devices.
-        </small>
-      </div>
     </div>
   )
 }
@@ -337,10 +433,30 @@ const styles = {
     fontFamily: 'system-ui, -apple-system, sans-serif',
     boxSizing: 'border-box'
   },
-  title: {
+  titleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '8px',
     margin: '0 0 20px 0',
+  },
+  title: {
+    margin: 0,
     fontSize: '20px',
     fontWeight: '600'
+  },
+  resetAllButton: {
+    padding: '6px 10px',
+    fontSize: '11px',
+    backgroundColor: 'transparent',
+    color: '#999',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: '#555',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    flexShrink: 0,
   },
   section: {
     marginBottom: '24px',
@@ -362,6 +478,31 @@ const styles = {
     marginBottom: '6px',
     fontSize: '13px',
     color: '#ccc'
+  },
+  helpIcon: {
+    color: '#666',
+    cursor: 'help',
+    fontSize: '12px',
+  },
+  sliderHeaderRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '8px',
+    marginBottom: '4px',
+  },
+  numericInput: {
+    width: '64px',
+    padding: '4px 6px',
+    backgroundColor: '#2a2a2a',
+    color: '#ffffff',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: '#444',
+    borderRadius: '4px',
+    fontSize: '12px',
+    fontFamily: 'inherit',
+    boxSizing: 'border-box',
   },
   select: {
     width: '100%',
@@ -395,9 +536,14 @@ const styles = {
     padding: '8px',
     backgroundColor: '#2a2a2a',
     color: '#ffffff',
-    border: '1px solid #444',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: '#444',
     borderRadius: '4px',
     fontSize: '13px'
+  },
+  textInputInvalid: {
+    borderColor: '#ff6666',
   },
   slider: {
     width: '100%',
@@ -406,6 +552,29 @@ const styles = {
     backgroundColor: '#444',
     outline: 'none',
     cursor: 'pointer'
+  },
+  unitToggle: {
+    display: 'flex',
+    gap: '4px',
+  },
+  unitToggleButton: {
+    flex: 1,
+    padding: '6px 0',
+    fontSize: '12px',
+    backgroundColor: '#2a2a2a',
+    color: '#ccc',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: '#444',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  unitToggleButtonActive: {
+    backgroundColor: '#00ffff',
+    color: '#000',
+    borderColor: '#00ffff',
+    fontWeight: 600,
   },
   checkboxLabel: {
     display: 'flex',
@@ -426,15 +595,6 @@ const styles = {
     color: '#ff6666',
     borderRadius: '4px',
     fontSize: '12px'
-  },
-  note: {
-    marginTop: '16px',
-    padding: '12px',
-    backgroundColor: '#2a2a2a',
-    borderRadius: '4px',
-    color: '#999',
-    fontSize: '11px',
-    lineHeight: '1.5'
   },
   exportButton: {
     width: '100%',
