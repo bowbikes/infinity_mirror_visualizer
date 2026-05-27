@@ -450,7 +450,12 @@ function App() {
           gl={{
             antialias: true,
             alpha: false,
-            powerPreference: 'high-performance'
+            powerPreference: 'high-performance',
+            // Lets us read canvas pixels for the emission-uniformity
+            // measurement script and for ExportModal's snapshot capture.
+            // Tiny perf cost (the framebuffer can't be discarded between
+            // composites) — acceptable.
+            preserveDrawingBuffer: true,
           }}
         >
           {/* Main scene */}

@@ -310,68 +310,36 @@ function SvgIconImpl({
     return new THREE.ShapeGeometry(outerShape)
   }, [shapeType, customSvgPath, edgeThickness, frameBounds])
 
-  // Calculate emissive intensity based on color hue.
-  // Only the first layer (layerIndex === 0) is emissive; reflections are not.
+  // Emissive intensity for the front layer. Reflections (layerIndex > 0)
+  // stay non-emissive; the parent ReflectionLayers component already dims
+  // their albedo per layer.
   //
-  // LEDs of equal physical brightness don't appear equally bright to the eye —
-  // yellows and greens (around 60°) look punchier than blues (240°). This
-  // fudges the emissive multiplier by hue so different colors land at a
-  // similar perceived brightness in the rendered scene. All constants are
-  // hand-tuned against the bloom pipeline; kept inline so the per-render
-  // path doesn't pull from a shared scratch object (extraction broke
-  // perceptual uniformity in practice).
+  // We compensate for the fact that the human eye + sRGB display don't
+  // see colors of equal saturation at equal brightness — blues look
+  // dim, yellows look punchy. emissiveIntensity scales inversely with
+  // the color's Rec.709 luminance so emission × intrinsic_luminance
+  // (i.e. what reaches the eye) lands near a constant across the hue
+  // circle. With POWER=1.0 the math gives exact perceived uniformity
+  // ignoring tone mapping; values below 1.0 under-compensate (brighter
+  // hues stay brighter), values above 1.0 over-compensate (push the
+  // dim hues like blue past the bright ones — useful when bloom is on
+  // and further amplifies already-bright pixels).
+  //
+  // BASELINE is set so default cyan emission ≈ what the previous
+  // hand-tuned curve produced, so existing screenshots don't shift
+  // dramatically with this change.
   const emissiveIntensity = useMemo(() => {
     if (layerIndex !== 0) return 0
-
-    const intensity_factor = 0.80
-    const minIntensity = 2.5
-
-    const peakBoost = 9.0
-    const peakSigmaDeg = 40.0
-
-    // soften the dip so 44–70° isn't overly dim
-    const dipBoost = 1.4
-    const dipSigmaDeg = 35.0
-
-    // gently lift reds so 324–30° stays consistent
-    const redLiftBoost = 1.75
-    const redLiftSigmaDeg = 55.0
-
-    // lightness handling
-    const dark_boost = 16.67
-    const light_reduce = 0.88
-
+    const POWER = 1.0
+    const BASELINE = 3.4
     const c = new THREE.Color(color)
-    const hsl = {}
-    c.getHSL(hsl)
-
-    const hueDeg = ((hsl.h * 360) % 360 + 360) % 360
-
-    const circDist = (a, b) => {
-      const d = Math.abs(a - b)
-      return Math.min(d, 360 - d)
-    }
-
-    const gaussian = (dist, sigma) => Math.exp(-0.5 * (dist / sigma) * (dist / sigma))
-
-    const d240 = circDist(hueDeg, 240)
-    const d60  = circDist(hueDeg, 60)
-    const d0   = circDist(hueDeg, 0)
-
-    const peak = peakBoost * gaussian(d240, peakSigmaDeg)
-    const dip  = dipBoost  * gaussian(d60,  dipSigmaDeg)
-    const redLift = redLiftBoost * gaussian(d0, redLiftSigmaDeg)
-
-    let baseIntensity = minIntensity + peak + redLift - dip
-
-    if (hsl.l < 0.3) {
-      baseIntensity += (0.3 - hsl.l) * dark_boost
-    } else if (hsl.l > 0.7) {
-      baseIntensity *= light_reduce
-    }
-
-    baseIntensity = Math.max(0, baseIntensity)
-    return baseIntensity * intensity_factor * lightIntensity
+    // Clamp away from zero so picking pure black doesn't divide-by-0;
+    // the result is bounded at BASELINE / 0.01 = 340.
+    const intrinsicLum = Math.max(
+      0.01,
+      0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b
+    )
+    return (BASELINE / Math.pow(intrinsicLum, POWER)) * lightIntensity
   }, [color, layerIndex, lightIntensity])
 
   return (
