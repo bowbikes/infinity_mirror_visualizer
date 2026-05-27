@@ -5,6 +5,7 @@ import InfinityMirrorScene from './components/InfinityMirrorScene'
 import ControlsPanel from './components/ControlsPanel'
 import CustomArtModal from './components/CustomArtModal'
 import ExportModal from './components/ExportModal'
+import './components/ControlsLayout.css'
 import {
   serializeConfiguration,
   captureCanvasSnapshot,
@@ -109,6 +110,11 @@ function App() {
   )
   const [customSvgPath, setCustomSvgPath] = useState(null)
   const [customArtFileName, setCustomArtFileName] = useState(null)
+
+  // Mobile drawer state. Above the CSS breakpoint (900px) the panel is
+  // pinned and this flag is ignored. Below it, .controls-aside.open
+  // slides the drawer in.
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   // Custom Art modal: holds the entire upload + manufacturability flow.
   // Stays mounted after first open so PreprocessPanel state (uploaded
@@ -458,10 +464,42 @@ function App() {
         </Canvas>
       </div>
 
+      {/* Mobile drawer toggle — only visible at narrow widths via CSS. */}
+      <button
+        type="button"
+        className="drawer-toggle"
+        onClick={() => setDrawerOpen((v) => !v)}
+        aria-label={drawerOpen ? 'Close controls drawer' : 'Open controls drawer'}
+        aria-expanded={drawerOpen}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          {drawerOpen ? (
+            <>
+              <line x1="6" y1="6" x2="18" y2="18" />
+              <line x1="6" y1="18" x2="18" y2="6" />
+            </>
+          ) : (
+            <>
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </>
+          )}
+        </svg>
+      </button>
+
+      {/* Scrim — only visible at narrow widths when drawer is open. */}
+      <div
+        className={`drawer-scrim ${drawerOpen ? 'open' : ''}`}
+        onClick={() => setDrawerOpen(false)}
+      />
+
       {/* Controls Panel — when preset is Custom Upload the panel shows
           a compact summary card (thumbnail + Edit button); the actual
           upload flow lives in CustomArtModal so the sidebar stays
-          uncluttered. */}
+          uncluttered. The .controls-aside wrapper handles the
+          responsive positioning. */}
+      <aside className={`controls-aside ${drawerOpen ? 'open' : ''}`}>
       <ControlsPanel
         customSvgPath={customSvgPath}
         customArtFileName={customArtFileName}
@@ -505,6 +543,7 @@ function App() {
         currentConfig={buildCurrentConfig()}
         onApplyConfig={handleApplyConfig}
       />
+      </aside>
 
       {/* Custom Art Modal — wraps the upload + preprocessing flow. */}
       <CustomArtModal

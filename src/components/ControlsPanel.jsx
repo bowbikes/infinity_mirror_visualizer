@@ -510,7 +510,8 @@ export default function ControlsPanel({
 
 const styles = {
   panel: {
-    width: '320px',
+    width: '100%',
+    height: '100%',
     maxHeight: '100vh',
     overflowY: 'auto',
     backgroundColor: '#1a1a1a',
