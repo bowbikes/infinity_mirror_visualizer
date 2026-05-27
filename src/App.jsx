@@ -92,7 +92,7 @@ const DEFAULTS = {
   reflectionDepth: 7,
   autoOrbit: false,
   enableBloom: false,
-  lightIntensity: 1.0,
+  lightIntensity: 0.5,
 }
 
 function App() {
