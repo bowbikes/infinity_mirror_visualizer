@@ -392,19 +392,6 @@ function App() {
             </EffectComposer>
           )}
         </Canvas>
-
-        {/* Performance toggle (bottom right corner) */}
-        <div style={styles.performanceToggle}>
-          <label style={styles.toggleLabel}>
-            <input
-              type="checkbox"
-              checked={enableBloom}
-              onChange={(e) => setEnableBloom(e.target.checked)}
-              style={styles.toggleCheckbox}
-            />
-            Bloom Effect (disable for better performance)
-          </label>
-        </div>
       </div>
 
       {/* Controls Panel — Custom Art panel only appears when the preset is
@@ -446,6 +433,8 @@ function App() {
         onReflectionDepthChange={setReflectionDepth}
         autoOrbit={autoOrbit}
         onAutoOrbitChange={setAutoOrbit}
+        enableBloom={enableBloom}
+        onEnableBloomChange={setEnableBloom}
         onExportClick={handleExportClick}
         defaults={DEFAULTS}
         onResetAll={handleResetAll}
@@ -477,29 +466,6 @@ const styles = {
     flex: 1,
     position: 'relative',
     minWidth: 0 // Allow flex shrinking
-  },
-  performanceToggle: {
-    position: 'absolute',
-    bottom: '16px',
-    right: '16px',
-    backgroundColor: 'rgba(26, 26, 26, 0.9)',
-    padding: '12px 16px',
-    borderRadius: '8px',
-    backdropFilter: 'blur(10px)'
-  },
-  toggleLabel: {
-    display: 'flex',
-    alignItems: 'center',
-    fontSize: '12px',
-    color: '#ffffff',
-    cursor: 'pointer',
-    fontFamily: 'system-ui, -apple-system, sans-serif'
-  },
-  toggleCheckbox: {
-    marginRight: '8px',
-    width: '16px',
-    height: '16px',
-    cursor: 'pointer'
   }
 }
 

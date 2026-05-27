@@ -148,6 +148,8 @@ export default function ControlsPanel({
   onReflectionDepthChange,
   autoOrbit,
   onAutoOrbitChange,
+  enableBloom,
+  onEnableBloomChange,
   onExportClick,
   defaults,
   onResetAll,
@@ -313,7 +315,9 @@ export default function ControlsPanel({
           max={130}
           step={2}
           onChange={onFrameDepthChange}
-          format={(v) => `${v}mm`}
+          format={(v) =>
+            units === 'mm' ? `${v}mm` : `${(v / 25.4).toFixed(2)}in`
+          }
           tooltip="Distance between the two-way and back mirrors. Larger depth makes the apparent tunnel longer."
         />
 
@@ -337,6 +341,21 @@ export default function ControlsPanel({
               style={styles.checkbox}
             />
             Auto-orbit camera
+          </label>
+        </div>
+
+        <div style={styles.control}>
+          <label
+            style={styles.checkboxLabel}
+            title="Adds a neon bloom post-process to the light color. Costs GPU; disable on older mobile hardware if the scene stutters."
+          >
+            <input
+              type="checkbox"
+              checked={enableBloom}
+              onChange={(e) => onEnableBloomChange(e.target.checked)}
+              style={styles.checkbox}
+            />
+            Bloom glow
           </label>
         </div>
       </div>
@@ -401,10 +420,10 @@ export default function ControlsPanel({
           defaultValue={defaults.edgeThickness}
           min={0}
           max={1}
-          step={0.05}
+          step={0.01}
           onChange={onEdgeThicknessChange}
           format={(v) => v.toFixed(2)}
-          tooltip="Dilates the icon outward — thin lines get thicker, solid shapes get larger. For preset shapes this becomes the ring width. 0 = source art unchanged."
+          tooltip="Dilates the icon outward — thin lines get thicker, solid shapes get larger. Scales with the Scale slider (the cut lines on a bigger printed icon are physically thicker). 0 = source art unchanged."
         />
       </div>
 
