@@ -11,6 +11,46 @@ function getPreprocessModule() {
   return _preprocessModulePromise
 }
 
+// Stroke-only SVG → PNG bytes. The browser natively draws SVG strokes when
+// we render via an <img> into a canvas, so we let it do the heavy lifting.
+// The result feeds straight into preprocessRaster (binarize → dilate →
+// trace), matching the JPG upload path. Background is filled white so the
+// post-canvas image has a defined contrast for thresholding.
+const RASTERIZE_TARGET_PX = 1024
+async function rasterizeSvgToBytes(svgText, targetSize = RASTERIZE_TARGET_PX) {
+  const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' })
+  const url = URL.createObjectURL(svgBlob)
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const im = new Image()
+      im.onload = () => resolve(im)
+      im.onerror = () =>
+        reject(new Error('SVG failed to load for rasterization.'))
+      im.src = url
+    })
+    const sw = img.naturalWidth || 200
+    const sh = img.naturalHeight || 200
+    const scale = targetSize / Math.max(sw, sh)
+    const dw = Math.max(1, Math.round(sw * scale))
+    const dh = Math.max(1, Math.round(sh * scale))
+
+    const canvas = document.createElement('canvas')
+    canvas.width = dw
+    canvas.height = dh
+    const ctx = canvas.getContext('2d')
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fillRect(0, 0, dw, dh)
+    ctx.drawImage(img, 0, 0, dw, dh)
+
+    const blob = await new Promise((resolve, reject) => {
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Canvas → blob failed.'))), 'image/png')
+    })
+    return new Uint8Array(await blob.arrayBuffer())
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
+
 /**
  * PreprocessPanel — accepts a JPG/PNG/SVG, walks the user through whatever
  * preprocessing the input needs (raster trace + manufacturability for JPGs,
@@ -117,8 +157,14 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
 
       if (isSvg) {
         const text = await file.text()
-        // Listing colors is cheap. If only one solid fill is present we
-        // treat it as already-black and skip the color picker entirely.
+        // Listing colors is cheap. Branch on what the source actually has:
+        //   >1 fills   → user picks which color is the cut (color picker)
+        //   1 fill     → passthrough (already-black single-shape SVG)
+        //   0 fills    → likely stroke-only line art. Rasterize via canvas
+        //                so the browser draws the strokes for us, then feed
+        //                the bitmap through the same raster pipeline JPGs
+        //                use. "Anything in, fab files out" — no user choice
+        //                required for the format conversion.
         const colors = listColors(text)
         if (colors.length > 1) {
           setColoredSvg(text)
@@ -126,7 +172,13 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
           setStage('picking')
           return
         }
-        // Single-fill SVG: passthrough → manufacturability.
+        if (colors.length === 0) {
+          const buf = await rasterizeSvgToBytes(text)
+          const { svg } = await preprocessRaster(buf, { maxLogoDimMm })
+          setIntermediateSvg(svg)
+          setStage('ready')
+          return
+        }
         setIntermediateSvg(text)
         setStage('ready')
         return
