@@ -94,13 +94,45 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
   const [coloredSvg, setColoredSvg] = useState(null)
   const [colorList, setColorList] = useState([])
 
-  // Manufacturability sliders (mm). Default matches the Python tool's
-  // production setting so the preview reflects fab geometry; users can
-  // dial it down to see the source art without rounding.
-  const [nozzleDiameterMm, setNozzleDiameterMm] = useState(0.6)
-  const [minIslandAreaMm2, setMinIslandAreaMm2] = useState(0)
-  const [minFeatureWidthMm, setMinFeatureWidthMm] = useState(0)
-  const [maxLogoDimMm, setMaxLogoDimMm] = useState(100)
+  // Nozzle diameters the printer can actually swap to. Continuous values
+  // would imply we support arbitrary nozzles, which we don't — pick from
+  // the stocked set. 0 = "don't apply nozzle rounding at all" (preview only).
+  const NOZZLE_OPTIONS = [0, 0.25, 0.4, 0.6, 0.8, 1.0]
+  const DEFAULT_NOZZLE = 0.6
+
+  // Derive sensible thresholds from nozzle geometry:
+  //   - min island area = circle of one nozzle stroke, ceil'd to 0.1 mm²
+  //     (anything smaller than the nozzle's own footprint can't print as
+  //     a discrete island)
+  //   - min feature width = nozzle diameter (one stroke wide, no thinner)
+  const minIslandFromNozzle = (d) =>
+    Math.ceil(Math.PI * (d / 2) * (d / 2) * 10) / 10
+  const minFeatureFromNozzle = (d) => d
+
+  // Visualizer-internal: maxLogoDim only affects the unit conversion for
+  // the manufacturability thresholds, not anything visible in the 3D
+  // preview. Hard-coded to the previous slider default — users with a
+  // strong opinion about absolute mm thresholds can adjust min-island /
+  // min-feature directly.
+  const MAX_LOGO_DIM_MM = 100
+
+  const [nozzleDiameterMm, setNozzleDiameterMm] = useState(DEFAULT_NOZZLE)
+  const [minIslandAreaMm2, setMinIslandAreaMm2] = useState(
+    minIslandFromNozzle(DEFAULT_NOZZLE)
+  )
+  const [minFeatureWidthMm, setMinFeatureWidthMm] = useState(
+    minFeatureFromNozzle(DEFAULT_NOZZLE)
+  )
+  // If the user moves min-island or min-feature manually, stop yanking
+  // them around when nozzle changes. Resets to false on full reset().
+  const [minIslandOverridden, setMinIslandOverridden] = useState(false)
+  const [minFeatureOverridden, setMinFeatureOverridden] = useState(false)
+
+  const handleNozzleChange = (d) => {
+    setNozzleDiameterMm(d)
+    if (!minIslandOverridden) setMinIslandAreaMm2(minIslandFromNozzle(d))
+    if (!minFeatureOverridden) setMinFeatureWidthMm(minFeatureFromNozzle(d))
+  }
 
   // Re-run manufacturability whenever a slider changes (and we have an intermediate).
   useEffect(() => {
@@ -114,7 +146,7 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
           nozzleDiameterMm,
           minIslandAreaMm2,
           minFeatureWidthMm,
-          maxLogoDimMm,
+          maxLogoDimMm: MAX_LOGO_DIM_MM,
         })
         if (cancelled) return
         setWarning(result.warnings.length ? result.warnings.join(' ') : null)
@@ -135,7 +167,6 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
     nozzleDiameterMm,
     minIslandAreaMm2,
     minFeatureWidthMm,
-    maxLogoDimMm,
   ])
 
   const reset = () => {
@@ -147,6 +178,11 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
     setStats(null)
     setErrorMessage(null)
     setSelectedFileName(null)
+    setNozzleDiameterMm(DEFAULT_NOZZLE)
+    setMinIslandAreaMm2(minIslandFromNozzle(DEFAULT_NOZZLE))
+    setMinFeatureWidthMm(minFeatureFromNozzle(DEFAULT_NOZZLE))
+    setMinIslandOverridden(false)
+    setMinFeatureOverridden(false)
   }
 
   const handleFileUpload = async (e) => {
@@ -188,7 +224,7 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
           }
           // No fills, no strokes — rasterize via canvas as last resort.
           const buf = await rasterizeSvgToBytes(text)
-          const { svg } = await preprocessRaster(buf, { maxLogoDimMm })
+          const { svg } = await preprocessRaster(buf, { maxLogoDimMm: MAX_LOGO_DIM_MM })
           setIntermediateSvg(svg)
           setStage('ready')
           return
@@ -200,7 +236,7 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
 
       // Raster path (JPG / PNG / anything not SVG).
       const buf = new Uint8Array(await file.arrayBuffer())
-      const { svg } = await preprocessRaster(buf, { maxLogoDimMm })
+      const { svg } = await preprocessRaster(buf, { maxLogoDimMm: MAX_LOGO_DIM_MM })
       setIntermediateSvg(svg)
       setStage('ready')
     } catch (err) {
@@ -289,37 +325,61 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
             <label style={styles.label}>
               Nozzle diameter: {nozzleDiameterMm.toFixed(2)} mm
             </label>
-            <input
-              type="range"
-              min="0"
-              max="2"
-              step="0.05"
-              value={nozzleDiameterMm}
-              onChange={(e) => setNozzleDiameterMm(Number(e.target.value))}
-              style={styles.slider}
-            />
+            <div style={styles.nozzleRow}>
+              {NOZZLE_OPTIONS.map((d) => {
+                const active = nozzleDiameterMm === d
+                return (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => handleNozzleChange(d)}
+                    style={{
+                      ...styles.nozzleChip,
+                      ...(active ? styles.nozzleChipActive : null),
+                    }}
+                  >
+                    {d === 0 ? 'off' : d.toFixed(2)}
+                  </button>
+                )
+              })}
+            </div>
             <div style={styles.subnote}>
               Rounds sharp corners below this radius so the printer can
-              reproduce them. 0 = off.
+              reproduce them.
             </div>
+            {nozzleDiameterMm === 0 && (
+              <div style={styles.previewMismatchWarn}>
+                The finished product will not be as fine as the rendered
+                preview.
+              </div>
+            )}
           </div>
 
           <div style={styles.control}>
             <label style={styles.label}>
-              Min island area: {minIslandAreaMm2} mm²
+              Min island area: {minIslandAreaMm2.toFixed(1)} mm²
             </label>
             <input
               type="range"
               min="0"
-              max="200"
-              step="1"
+              max="10"
+              step="0.1"
               value={minIslandAreaMm2}
-              onChange={(e) => setMinIslandAreaMm2(Number(e.target.value))}
+              onChange={(e) => {
+                setMinIslandAreaMm2(Number(e.target.value))
+                setMinIslandOverridden(true)
+              }}
               style={styles.slider}
             />
             <div style={styles.subnote}>
               Drops islands smaller than this — kills speckles from JPG traces.
             </div>
+            {minIslandAreaMm2 === 0 && (
+              <div style={styles.previewMismatchWarn}>
+                The finished product will not be as fine as the rendered
+                preview.
+              </div>
+            )}
           </div>
 
           <div style={styles.control}>
@@ -332,31 +392,22 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
               max="5"
               step="0.1"
               value={minFeatureWidthMm}
-              onChange={(e) => setMinFeatureWidthMm(Number(e.target.value))}
+              onChange={(e) => {
+                setMinFeatureWidthMm(Number(e.target.value))
+                setMinFeatureOverridden(true)
+              }}
               style={styles.slider}
             />
             <div style={styles.subnote}>
               Drops islands whose narrowest part is below this — kills hairlines
               the printer can't make as walls.
             </div>
-          </div>
-
-          <div style={styles.control}>
-            <label style={styles.label}>
-              Max logo dimension: {maxLogoDimMm} mm
-            </label>
-            <input
-              type="range"
-              min="50"
-              max="150"
-              step="5"
-              value={maxLogoDimMm}
-              onChange={(e) => setMaxLogoDimMm(Number(e.target.value))}
-              style={styles.slider}
-            />
-            <div style={styles.subnote}>
-              How the art's source units convert to mm for the threshold sliders.
-            </div>
+            {minFeatureWidthMm === 0 && (
+              <div style={styles.previewMismatchWarn}>
+                The finished product will not be as fine as the rendered
+                preview.
+              </div>
+            )}
           </div>
 
           {warning && <div style={styles.warning}>{warning}</div>}
@@ -488,5 +539,39 @@ const styles = {
     borderRadius: '4px',
     cursor: 'pointer',
     padding: 0,
+  },
+  nozzleRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '4px',
+  },
+  nozzleChip: {
+    flex: '1 1 0',
+    minWidth: 0,
+    padding: '6px 4px',
+    fontSize: '12px',
+    backgroundColor: '#2a2a2a',
+    color: '#ccc',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: '#444',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  nozzleChipActive: {
+    backgroundColor: '#00ffff',
+    color: '#000',
+    borderColor: '#00ffff',
+    fontWeight: 600,
+  },
+  previewMismatchWarn: {
+    marginTop: '6px',
+    padding: '6px 8px',
+    backgroundColor: '#4a3a10',
+    color: '#ffd066',
+    borderRadius: '4px',
+    fontSize: '11px',
+    lineHeight: '1.4',
   },
 }
