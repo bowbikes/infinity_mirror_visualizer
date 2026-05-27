@@ -5,6 +5,7 @@ import InfinityMirrorScene from './components/InfinityMirrorScene'
 import ControlsPanel from './components/ControlsPanel'
 import CustomArtModal from './components/CustomArtModal'
 import ExportModal from './components/ExportModal'
+import InfoPopover from './components/InfoPopover'
 import './components/ControlsLayout.css'
 import {
   serializeConfiguration,
@@ -490,6 +491,11 @@ function App() {
           )}
         </Canvas>
       </div>
+
+      {/* About card / Layered Logic brand corner. Auto-dismisses to a
+          small ⓘ button after the user closes it (sticky via
+          localStorage). */}
+      <InfoPopover />
 
       {/* Mobile drawer toggle — only visible at narrow widths via CSS. */}
       <button
