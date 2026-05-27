@@ -1,31 +1,30 @@
 import JSZip from 'jszip';
 
 /**
- * Generates a cryptographic signature for the configuration data
- * Uses a simple HMAC-like approach with Web Crypto API
+ * Plain SHA-256 hash of the serialized config. This is an *integrity*
+ * checksum — it catches accidental corruption in transit, not tampering.
+ *
+ * (Real tamper protection requires a signature with a private key that
+ * never reaches the client. An earlier version of this file used a
+ * hardcoded secret baked into the bundle, which provided no actual
+ * protection — anyone with the JS could re-sign anything. Removed.)
  */
-async function generateSignature(data, secretKey = 'INFINITY_MIRROR_V1') {
+async function computeIntegrityHash(data) {
   const encoder = new TextEncoder();
-  const dataBuffer = encoder.encode(JSON.stringify(data) + secretKey);
-
-  const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+  const buffer = encoder.encode(JSON.stringify(data));
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 
-  return hashHex;
+export async function verifyIntegrityHash(data, hash) {
+  const expected = await computeIntegrityHash(data);
+  return expected === hash;
 }
 
 /**
- * Verifies the signature of a configuration file
- */
-export async function verifySignature(data, signature, secretKey = 'INFINITY_MIRROR_V1') {
-  const expectedSignature = await generateSignature(data, secretKey);
-  return expectedSignature === signature;
-}
-
-/**
- * Captures a screenshot of the Three.js canvas
- * Uses renderer.domElement.toDataURL() which works without preserveDrawingBuffer
+ * Captures a screenshot of the Three.js canvas.
+ * Uses renderer.domElement.toDataURL() which works without preserveDrawingBuffer.
  */
 export function captureCanvasSnapshot(canvasElement) {
   return new Promise((resolve) => {
@@ -39,21 +38,11 @@ export function captureCanvasSnapshot(canvasElement) {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           try {
-            // Use toDataURL which works better with post-processing
             const dataUrl = canvasElement.toDataURL('image/png', 1.0);
-
-            // Convert data URL to blob
             fetch(dataUrl)
-              .then(res => res.blob())
-              .then(blob => {
-                if (!blob) {
-                  console.error('Failed to create blob from canvas');
-                  resolve(null);
-                  return;
-                }
-                resolve(blob);
-              })
-              .catch(error => {
+              .then((res) => res.blob())
+              .then((blob) => resolve(blob || null))
+              .catch((error) => {
                 console.error('Error converting data URL to blob:', error);
                 resolve(null);
               });
@@ -70,30 +59,32 @@ export function captureCanvasSnapshot(canvasElement) {
   });
 }
 
+const CUSTOM_SVG_FILENAME = 'custom-icon.svg';
+
 /**
- * Serializes the complete scene configuration
+ * Serializes the complete scene configuration. The custom SVG (which can
+ * be many KB) is *not* embedded in the JSON — it's written as a sibling
+ * file in the export ZIP and referenced by filename here.
  */
 export function serializeConfiguration(state) {
-  const config = {
-    version: '1.0.0',
+  const hasCustomSvg = state.customSvgPath && state.shapeType === 'custom';
+  return {
+    version: '1.1.0',
     timestamp: new Date().toISOString(),
 
-    // Icon/Shape configuration
     icon: {
       selectedPreset: state.selectedPreset,
       shapeType: state.shapeType,
-      customSvgPath: state.customSvgPath,
       svgRenderMode: state.svgRenderMode,
+      customSvgFilename: hasCustomSvg ? CUSTOM_SVG_FILENAME : null,
     },
 
-    // Colors
     colors: {
       wallColor: state.wallColor,
       frameColor: state.frameColor,
       lightColor: state.lightColor,
     },
 
-    // Transform parameters
     transform: {
       scale: state.iconScale,
       rotation: state.iconRotation,
@@ -102,29 +93,29 @@ export function serializeConfiguration(state) {
       edgeThickness: state.edgeThickness,
     },
 
-    // Mirror settings
     mirror: {
-      spacing: state.mirrorSpacing,
+      frameDepthMm: state.frameDepthMm,
       reflectionDepth: state.reflectionDepth,
     },
 
-    // Performance settings
     performance: {
       autoOrbit: state.autoOrbit,
       enableBloom: state.enableBloom,
     },
-  };
 
-  return config;
+    // Non-serialized: the raw SVG text travels alongside in the ZIP, not
+    // here. Pass it to createExportZip directly via the customSvgPath arg.
+  };
 }
 
 /**
- * Creates a ZIP file with the configuration and snapshot
+ * Creates a ZIP with the configuration JSON, snapshot, custom SVG (if any),
+ * and a README. The integrity hash inside the JSON covers the JSON only —
+ * not a tamper-proof signature, just a checksum to catch corruption.
  */
-export async function createExportZip(config, snapshotBlob, customerInfo = {}) {
+export async function createExportZip(config, snapshotBlob, customerInfo = {}, customSvgPath = null) {
   const zip = new JSZip();
 
-  // Add configuration JSON
   const configWithMeta = {
     ...config,
     customer: {
@@ -135,30 +126,29 @@ export async function createExportZip(config, snapshotBlob, customerInfo = {}) {
     },
   };
 
-  // Generate signature for tamper detection
-  const signature = await generateSignature(configWithMeta);
+  const integrityHash = await computeIntegrityHash(configWithMeta);
 
-  const exportData = {
-    config: configWithMeta,
-    signature: signature,
-    signatureVersion: '1.0',
-  };
+  zip.file(
+    'configuration.json',
+    JSON.stringify(
+      {
+        config: configWithMeta,
+        integrityHash,
+        integrityVersion: '1.0',
+      },
+      null,
+      2
+    )
+  );
 
-  zip.file('configuration.json', JSON.stringify(exportData, null, 2));
+  if (snapshotBlob) zip.file('preview.png', snapshotBlob);
 
-  // Add snapshot image if available
-  if (snapshotBlob) {
-    zip.file('preview.png', snapshotBlob);
-  }
+  const hasCustomSvg = customSvgPath && config.icon.shapeType === 'custom';
+  if (hasCustomSvg) zip.file(CUSTOM_SVG_FILENAME, customSvgPath);
 
-  // Add custom SVG file if user uploaded one
-  if (config.icon.customSvgPath && config.icon.shapeType === 'custom') {
-    zip.file('custom-icon.svg', config.icon.customSvgPath);
-  }
-
-  // Add README with instructions
-  const hasCustomSvg = config.icon.customSvgPath && config.icon.shapeType === 'custom';
-  const readme = `Infinity Mirror Configuration Export
+  zip.file(
+    'README.txt',
+    `Infinity Mirror Configuration Export
 =====================================
 
 Export Date: ${new Date().toISOString()}
@@ -166,30 +156,24 @@ Customer: ${customerInfo.name || 'Anonymous'}
 Email: ${customerInfo.email || 'N/A'}
 
 Files Included:
-- configuration.json: Complete scene configuration with cryptographic signature
-- preview.png: Visual snapshot of the configured design${hasCustomSvg ? '\n- custom-icon.svg: User-uploaded custom SVG icon file' : ''}
+- configuration.json   Scene configuration with an integrity checksum
+- preview.png          Visual snapshot of the configured design${hasCustomSvg ? `
+- ${CUSTOM_SVG_FILENAME}       User-uploaded custom SVG icon` : ''}
 
-This file contains a cryptographic signature to prevent tampering.
-DO NOT modify the configuration.json file or the signature will be invalid.
+The integrity checksum (SHA-256 of the config JSON) detects accidental
+corruption in transit. It is NOT a tamper-proof signature — a modified
+config can be re-hashed by anyone. For tamper protection, sign the ZIP
+file with the manufacturer's PGP key out-of-band.
+`
+  );
 
-For manufacturing, send this ZIP file to the manufacturer.
-`;
-
-  zip.file('README.txt', readme);
-
-  // Generate ZIP blob
-  const zipBlob = await zip.generateAsync({
+  return zip.generateAsync({
     type: 'blob',
     compression: 'DEFLATE',
-    compressionOptions: { level: 9 }
+    compressionOptions: { level: 9 },
   });
-
-  return zipBlob;
 }
 
-/**
- * Downloads the ZIP file to the user's computer
- */
 export function downloadZipFile(zipBlob, filename = 'infinity-mirror-config.zip') {
   const url = URL.createObjectURL(zipBlob);
   const link = document.createElement('a');
@@ -201,9 +185,6 @@ export function downloadZipFile(zipBlob, filename = 'infinity-mirror-config.zip'
   URL.revokeObjectURL(url);
 }
 
-/**
- * Sends the export file to the manufacturer via email/API
- */
 export async function sendToManufacturer(zipBlob, customerInfo, manufacturerEndpoint) {
   const formData = new FormData();
   formData.append('file', zipBlob, 'infinity-mirror-config.zip');
@@ -216,13 +197,10 @@ export async function sendToManufacturer(zipBlob, customerInfo, manufacturerEndp
       method: 'POST',
       body: formData,
     });
-
     if (!response.ok) {
       throw new Error(`Server responded with ${response.status}`);
     }
-
-    const result = await response.json();
-    return { success: true, data: result };
+    return { success: true, data: await response.json() };
   } catch (error) {
     console.error('Error sending to manufacturer:', error);
     return { success: false, error: error.message };
@@ -230,30 +208,29 @@ export async function sendToManufacturer(zipBlob, customerInfo, manufacturerEndp
 }
 
 /**
- * Validates an imported configuration file
+ * Validates an imported configuration ZIP. Checks the integrity hash and
+ * pulls out the custom SVG (if present) so the caller can re-hydrate state.
  */
 export async function validateImportedConfig(zipBlob) {
   try {
     const zip = await JSZip.loadAsync(zipBlob);
-
-    // Check for required files
     const configFile = zip.file('configuration.json');
     if (!configFile) {
       return { valid: false, error: 'Missing configuration.json' };
     }
-
-    // Parse configuration
-    const configText = await configFile.async('text');
-    const exportData = JSON.parse(configText);
-
-    // Verify signature
-    const isValid = await verifySignature(exportData.config, exportData.signature);
-
-    if (!isValid) {
-      return { valid: false, error: 'Invalid signature - file may have been tampered with' };
+    const exportData = JSON.parse(await configFile.async('text'));
+    const hash = exportData.integrityHash || exportData.signature; // back-compat for v1.0
+    const ok = await verifyIntegrityHash(exportData.config, hash);
+    if (!ok) {
+      return { valid: false, error: 'Integrity check failed — file may be corrupted' };
     }
 
-    return { valid: true, config: exportData.config };
+    let customSvgPath = null;
+    const customSvgFile = zip.file(CUSTOM_SVG_FILENAME);
+    if (customSvgFile) {
+      customSvgPath = await customSvgFile.async('text');
+    }
+    return { valid: true, config: exportData.config, customSvgPath };
   } catch (error) {
     return { valid: false, error: error.message };
   }

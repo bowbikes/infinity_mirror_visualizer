@@ -32,8 +32,8 @@ export default function ControlsPanel({
   onFrameHeightChange,
   units,
   onUnitsChange,
-  mirrorSpacing,
-  onMirrorSpacingChange,
+  frameDepthMm,
+  onFrameDepthChange,
   iconScale,
   onIconScaleChange,
   iconRotation,
@@ -264,14 +264,15 @@ export default function ControlsPanel({
 
         <div style={styles.control}>
           <label style={styles.label}>
-            Frame Depth: {mirrorSpacing + 10}mm</label>
+            Frame Depth: {frameDepthMm}mm
+          </label>
           <input
             type="range"
-            min="11"
-            max="120"
+            min="21"
+            max="130"
             step="2"
-            value={mirrorSpacing}
-            onChange={(e) => onMirrorSpacingChange(Number(e.target.value))}
+            value={frameDepthMm}
+            onChange={(e) => onFrameDepthChange(Number(e.target.value))}
             style={styles.slider}
           />
         </div>

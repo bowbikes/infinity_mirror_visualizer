@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react'
 
-import {
-  preprocessRaster,
-  listColors,
-  selectByColor,
-  applyManufacturability,
-} from '../preprocess/index.js'
+// Preprocessing pulls in jimp/potrace/clipper-lib (~200 KB after gzip) and
+// is only needed once the user uploads a file. Lazy-load on first use so
+// the initial bundle stays slim for visitors who only browse the presets.
+let _preprocessModulePromise = null
+function getPreprocessModule() {
+  if (!_preprocessModulePromise) {
+    _preprocessModulePromise = import('../preprocess/index.js')
+  }
+  return _preprocessModulePromise
+}
 
 /**
  * PreprocessPanel — accepts a JPG/PNG/SVG, walks the user through whatever
@@ -55,21 +59,30 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
   // Re-run manufacturability whenever a slider changes (and we have an intermediate).
   useEffect(() => {
     if (!intermediateSvg) return
-    try {
-      const result = applyManufacturability(intermediateSvg, {
-        nozzleDiameterMm,
-        minIslandAreaMm2,
-        minFeatureWidthMm,
-        maxLogoDimMm,
-      })
-      setWarning(result.warnings.length ? result.warnings.join(' ') : null)
-      setStats({
-        droppedThin: result.droppedThin,
-        droppedSmall: result.droppedSmall,
-      })
-      onPreprocessed(result.svg)
-    } catch (err) {
-      reportError(err.message)
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { applyManufacturability } = await getPreprocessModule()
+        if (cancelled) return
+        const result = applyManufacturability(intermediateSvg, {
+          nozzleDiameterMm,
+          minIslandAreaMm2,
+          minFeatureWidthMm,
+          maxLogoDimMm,
+        })
+        if (cancelled) return
+        setWarning(result.warnings.length ? result.warnings.join(' ') : null)
+        setStats({
+          droppedThin: result.droppedThin,
+          droppedSmall: result.droppedSmall,
+        })
+        onPreprocessed(result.svg)
+      } catch (err) {
+        if (!cancelled) reportError(err.message)
+      }
+    })()
+    return () => {
+      cancelled = true
     }
   }, [
     intermediateSvg,
@@ -99,6 +112,8 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
     try {
       const isSvg =
         file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')
+
+      const { preprocessRaster, listColors } = await getPreprocessModule()
 
       if (isSvg) {
         const text = await file.text()
@@ -134,6 +149,7 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
     if (!coloredSvg) return
     setBusy(true)
     try {
+      const { selectByColor } = await getPreprocessModule()
       const { svg } = selectByColor(coloredSvg, { colors: [hex] })
       setIntermediateSvg(svg)
       setStage('ready')

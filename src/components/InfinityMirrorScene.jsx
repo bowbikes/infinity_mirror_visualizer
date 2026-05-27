@@ -18,7 +18,7 @@ export default function InfinityMirrorScene({
   wallColor,
   frameColor,
   lightColor,
-  mirrorSpacingMm,
+  frameDepthMm,
   frameWidthMm,
   frameHeightMm,
   iconScale,
@@ -37,33 +37,24 @@ export default function InfinityMirrorScene({
   const wallPadding = 25 // units of padding around the frame
   const wallSegmentSize = 70 // size of wall segments beyond the frame
 
-  // Auto-orbit effect - smooth rotation around Z axis
+  // Auto-orbit — smooth rotation around the Z axis at one full turn / 10s.
   useFrame((state, delta) => {
-    if (autoOrbit && orbitControlsRef.current) {
-      // Complete one full rotation in 10 seconds
-      const rotationSpeed = (Math.PI * 2) / 10
-      orbitTimeRef.current += delta * rotationSpeed
-
-      const radius = 80 // distance from target
-
-      // 60 degrees from the wall (Z=0 plane)
-      const angleFromWall = (65 * Math.PI) / 180
-
-      // Rotation angle around Z axis (clockwise when viewed from front)
-      const rotationAngle = orbitTimeRef.current
-
-      // Orbit around Z axis - camera moves in X-Y plane, maintaining distance from Z=0
-      const x = radius * Math.cos(angleFromWall) * Math.cos(rotationAngle)
-      const y = radius * Math.cos(angleFromWall) * Math.sin(rotationAngle)
-      const z = radius * Math.sin(angleFromWall)
-
-      // Update camera position
-      state.camera.position.set(x, y, z)
-      state.camera.lookAt(0, 0, 0)
-    } else {
-      // Reset time when disabled
-      orbitTimeRef.current = 0
+    if (!autoOrbit || !orbitControlsRef.current) {
+      // Snap the accumulator back to zero exactly once when orbit stops, so
+      // the next enable starts from a known phase.
+      if (orbitTimeRef.current !== 0) orbitTimeRef.current = 0
+      return
     }
+    const rotationSpeed = (Math.PI * 2) / 10
+    orbitTimeRef.current += delta * rotationSpeed
+
+    const radius = 80
+    const angleFromWall = (65 * Math.PI) / 180
+    const x = radius * Math.cos(angleFromWall) * Math.cos(orbitTimeRef.current)
+    const y = radius * Math.cos(angleFromWall) * Math.sin(orbitTimeRef.current)
+    const z = radius * Math.sin(angleFromWall)
+    state.camera.position.set(x, y, z)
+    state.camera.lookAt(0, 0, 0)
   })
 
   return (
@@ -137,7 +128,7 @@ export default function InfinityMirrorScene({
         svgRenderMode={svgRenderMode}
         lightColor={lightColor}
         frameColor={frameColor}
-        mirrorSpacingMm={mirrorSpacingMm}
+        frameDepthMm={frameDepthMm}
         frameWidthMm={frameWidthMm}
         frameHeightMm={frameHeightMm}
         iconScale={iconScale}

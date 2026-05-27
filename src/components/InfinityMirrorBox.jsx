@@ -1,5 +1,5 @@
+import { useMemo } from 'react'
 import * as THREE from 'three'
-import { useRef } from 'react'
 import ReflectionLayers from './ReflectionLayers'
 
 /**
@@ -20,7 +20,7 @@ export default function InfinityMirrorBox({
   svgRenderMode,
   lightColor,
   frameColor,
-  mirrorSpacingMm,
+  frameDepthMm,
   frameWidthMm = 300,
   frameHeightMm = 300,
   iconScale,
@@ -29,39 +29,29 @@ export default function InfinityMirrorBox({
   reflectionDepth,
   edgeThickness
 }) {
-  const boxRef = useRef()
-
-  // Dimensions in units (1 unit = 10mm)
+  // Dimensions in units (1 unit = 10mm).
   const width = frameWidthMm / 10
   const height = frameHeightMm / 10
 
-  // Convert mirror spacing from mm to units
-  const spacing = mirrorSpacingMm / 10 // e.g., 20mm -> 2 units
+  // Frame depth = mirror-to-mirror spacing + 10mm of frame thickness
+  // (5mm front + 5mm back). Decompose the user-facing depth back into
+  // those two pieces.
+  const frameThickness = 0.5 // 5mm in units
+  const totalDepth = frameDepthMm / 10
+  const spacing = totalDepth - frameThickness * 2
 
-  // Box depth = spacing + frame thickness
-  const frameThickness = 0.5 // 5mm
-  const totalDepth = spacing + frameThickness * 2
-
-  // Inner mirror position (back of the box)
-  const innerMirrorZ = -totalDepth / 2 + frameThickness
-
-  // Front mirror position
-  const frontMirrorZ = innerMirrorZ + spacing
-
-  // Calculate taper angle for clipping planes
-  // Reflections scale by (1 - i * 0.02) per layer, with layerSpacing = spacing * 2
-  // Scale reduction per unit depth = 0.02 / (spacing * 2)
-  // Taper angle in radians
-  const scaleReductionPerLayer = 0.02
-  const layerSpacing = spacing * 2
-  const scaleReductionPerUnitDepth = scaleReductionPerLayer / layerSpacing
-  const taperAngle = Math.atan(scaleReductionPerUnitDepth)
-
-  // Multiplier to fine-tune the taper angle
+  // Clipping-plane taper: reflections scale by (1 - i * 0.02) per layer at
+  // layerSpacing = spacing * 2, so the planes tilt inward at that rate.
+  // taperMultiple is hand-tuned to match the visual perspective.
+  const taperAngle = Math.atan(0.02 / (spacing * 2))
   const taperMultiple = 32.5
 
+  // Stable frame-bounds array so downstream memos don't see a new reference
+  // every render. (Inline `[width-2, height-2]` was breaking SvgIcon's memo.)
+  const frameBounds = useMemo(() => [width - 2, height - 2], [width, height])
+
   return (
-    <group ref={boxRef}>
+    <group>
       {/* Frame border - creates 1 unit border around mirror */}
       {/* Top border */}
       <mesh position={[0, height / 2 - 0.5, totalDepth/2]}>
@@ -103,13 +93,9 @@ export default function InfinityMirrorBox({
         />
       </mesh>
 
-      {/* Back panel - REMOVED to allow infinite depth */}
-      {/* No back wall - the frame is now a portal into infinite space */}
+      {/* No back wall — the frame is a portal into the reflection stack. */}
 
-      {/* Inner cavity - REMOVED to create infinite depth illusion */}
-      {/* The black void is now open so you can see through to all reflection layers */}
-
-      {/* Icon and reflection layers - positioned with first layer in middle of frame */}
+      {/* Icon and reflection layers — first layer sits in the middle of the frame. */}
       <ReflectionLayers
         shapeType={shapeType}
         customSvgPath={customSvgPath}
@@ -124,9 +110,8 @@ export default function InfinityMirrorBox({
         ]}
         depth={reflectionDepth}
         spacing={spacing}
-        mirrorSpacingMm={mirrorSpacingMm}
         edgeThickness={edgeThickness}
-        frameBounds={[width - 2, height - 2]}
+        frameBounds={frameBounds}
       />
 
       {/* Front 2-way mirror (semi-transparent) */}

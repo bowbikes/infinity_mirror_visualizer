@@ -1,16 +1,34 @@
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import * as THREE from 'three'
 import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader'
 
+import { clipLineSegment, clipPolygon } from '../utils/svgClip'
+import { computeEmissiveIntensity } from '../utils/emissiveIntensity'
+
+// Cache SVG parses keyed by raw text — each reflection layer renders its
+// own SvgIcon, and without this every layer would re-parse the same SVG.
+const _svgParseCache = new Map()
+function getParsedSvg(svgText) {
+  let parsed = _svgParseCache.get(svgText)
+  if (!parsed) {
+    parsed = new SVGLoader().parse(svgText)
+    _svgParseCache.set(svgText, parsed)
+  }
+  return parsed
+}
+
 /**
- * SvgIcon component - Renders a simple geometric shape outline/edge
+ * SvgIcon — renders an SVG (preset or uploaded) as a 3D mesh layer.
  *
- * Scale assumption: 1 unit = 10mm
- * The icon is positioned on the inner mirror plane facing the user
+ * Three render modes:
+ *   - 'fill'    flat ShapeGeometry from SVG paths
+ *   - 'outline' ExtrudeGeometry with bevel for a stroked look
+ *   - 'stroke'  manually built flat ribbon for line-art SVGs (snowflakes etc.)
  *
- * Note: Using simple shapes instead of SVG parsing for better compatibility
+ * Scale: 1 unit = 10mm. Frame-bounded geometry gets clipped via
+ * Sutherland-Hodgman so reflections don't bleed past the mirror opening.
  */
-export default function SvgIcon({
+function SvgIconImpl({
   shapeType = 'hexagon',
   customSvgPath,
   svgRenderMode = 'outline',
@@ -25,159 +43,11 @@ export default function SvgIcon({
 
   // Create extruded outline geometry
   const outlineGeometry = useMemo(() => {
-    // Helper to check if a point is within bounds
-    const isInBounds = (p, bounds) => {
-      if (!bounds) return true
-
-      const halfWidth = bounds[0] / 2
-      const halfHeight = bounds[1] / 2
-
-      return p.x >= -halfWidth && p.x <= halfWidth &&
-             p.y >= -halfHeight && p.y <= halfHeight
-    }
-
-    // Cohen-Sutherland line clipping algorithm
-    // Clips a line segment to a rectangular boundary
-    const clipLineSegment = (p1, p2, bounds) => {
-      if (!bounds) return [p1, p2]
-
-      const halfWidth = bounds[0] / 2
-      const halfHeight = bounds[1] / 2
-
-      const INSIDE = 0 // 0000
-      const LEFT = 1   // 0001
-      const RIGHT = 2  // 0010
-      const BOTTOM = 4 // 0100
-      const TOP = 8    // 1000
-
-      const computeOutCode = (p) => {
-        let code = INSIDE
-        if (p.x < -halfWidth) code |= LEFT
-        else if (p.x > halfWidth) code |= RIGHT
-        if (p.y < -halfHeight) code |= BOTTOM
-        else if (p.y > halfHeight) code |= TOP
-        return code
-      }
-
-      let x1 = p1.x, y1 = p1.y
-      let x2 = p2.x, y2 = p2.y
-      let outcode1 = computeOutCode({x: x1, y: y1})
-      let outcode2 = computeOutCode({x: x2, y: y2})
-      let accept = false
-
-      while (true) {
-        if (!(outcode1 | outcode2)) {
-          // Both points inside
-          accept = true
-          break
-        } else if (outcode1 & outcode2) {
-          // Both points outside same region - reject
-          break
-        } else {
-          // Line crosses boundary - clip it
-          let x, y
-          const outcodeOut = outcode1 ? outcode1 : outcode2
-
-          if (outcodeOut & TOP) {
-            x = x1 + (x2 - x1) * (halfHeight - y1) / (y2 - y1)
-            y = halfHeight
-          } else if (outcodeOut & BOTTOM) {
-            x = x1 + (x2 - x1) * (-halfHeight - y1) / (y2 - y1)
-            y = -halfHeight
-          } else if (outcodeOut & RIGHT) {
-            y = y1 + (y2 - y1) * (halfWidth - x1) / (x2 - x1)
-            x = halfWidth
-          } else if (outcodeOut & LEFT) {
-            y = y1 + (y2 - y1) * (-halfWidth - x1) / (x2 - x1)
-            x = -halfWidth
-          }
-
-          if (outcodeOut === outcode1) {
-            x1 = x
-            y1 = y
-            outcode1 = computeOutCode({x: x1, y: y1})
-          } else {
-            x2 = x
-            y2 = y
-            outcode2 = computeOutCode({x: x2, y: y2})
-          }
-        }
-      }
-
-      if (accept) {
-        return [{x: x1, y: y1}, {x: x2, y: y2}]
-      }
-      return null // Line segment completely outside bounds
-    }
-
-    // Clip a polygon path to frame bounds using Sutherland-Hodgman algorithm
-    const clipPolygon = (points, bounds) => {
-      if (!bounds || points.length < 2) return points
-
-      const halfWidth = bounds[0] / 2
-      const halfHeight = bounds[1] / 2
-
-      let output = [...points]
-
-      // Clip against each edge: left, right, bottom, top
-      const clipEdges = [
-        { edge: 'left', inside: (p) => p.x >= -halfWidth,
-          intersect: (p1, p2) => ({
-            x: -halfWidth,
-            y: p1.y + (p2.y - p1.y) * (-halfWidth - p1.x) / (p2.x - p1.x)
-          })},
-        { edge: 'right', inside: (p) => p.x <= halfWidth,
-          intersect: (p1, p2) => ({
-            x: halfWidth,
-            y: p1.y + (p2.y - p1.y) * (halfWidth - p1.x) / (p2.x - p1.x)
-          })},
-        { edge: 'bottom', inside: (p) => p.y >= -halfHeight,
-          intersect: (p1, p2) => ({
-            x: p1.x + (p2.x - p1.x) * (-halfHeight - p1.y) / (p2.y - p1.y),
-            y: -halfHeight
-          })},
-        { edge: 'top', inside: (p) => p.y <= halfHeight,
-          intersect: (p1, p2) => ({
-            x: p1.x + (p2.x - p1.x) * (halfHeight - p1.y) / (p2.y - p1.y),
-            y: halfHeight
-          })}
-      ]
-
-      for (const {inside, intersect} of clipEdges) {
-        if (output.length === 0) break
-
-        const input = output
-        output = []
-
-        for (let i = 0; i < input.length; i++) {
-          const current = input[i]
-          const next = input[(i + 1) % input.length]
-
-          const currentInside = inside(current)
-          const nextInside = inside(next)
-
-          if (currentInside) {
-            output.push(current)
-            if (!nextInside) {
-              output.push(intersect(current, next))
-            }
-          } else if (nextInside) {
-            output.push(intersect(current, next))
-          }
-        }
-      }
-
-      return output
-    }
-
     // Handle custom SVG path
     if (shapeType === 'custom' && customSvgPath) {
       try {
-        // Create an SVGLoader instance
-        const loader = new SVGLoader()
-
-        // Parse the full SVG string (which may contain path, line, polyline, etc.)
-        const svgData = loader.parse(customSvgPath)
+        // Cached parse so the N reflection layers each pay once, not N times.
+        const svgData = getParsedSvg(customSvgPath)
 
         // Calculate bounds across ALL paths and detect if SVG uses strokes
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
@@ -289,8 +159,6 @@ export default function SvgIcon({
               }
             })
           })
-
-          console.log(`Created ${geometries.length} line segment geometries`)
 
           if (geometries.length === 0) {
             return createFallbackGeometry()
@@ -559,64 +427,11 @@ export default function SvgIcon({
     return new THREE.ShapeGeometry(outerShape)
   }, [shapeType, customSvgPath, svgRenderMode, edgeThickness, frameBounds])
 
-  // Calculate emissive intensity based on color hue
-  // Only the FIRST layer (layerIndex === 0) should be emissive
-  // All reflection layers should be non-emissive
-  const emissiveIntensity = useMemo(() => {
-  if (layerIndex !== 0) return 0
-
-  // --- tuning knobs ---
-  const intensity_factor = 0.80
-
-  const minIntensity = 2.5
-
-  const peakBoost = 9.0
-  const peakSigmaDeg = 40.0
-
-  // soften the dip so 44–70° isn't overly dim
-  const dipBoost = 1.4       // was ~2.5
-  const dipSigmaDeg = 35.0   // was ~25 (wider + shallower)
-
-  // optional: gently lift reds so 324–30 stays consistent
-  const redLiftBoost = 1.75
-  const redLiftSigmaDeg = 55.0
-
-  // lightness handling
-  const dark_boost = 16.67
-  const light_reduce = 0.88  // was 0.7 (less aggressive)
-
-  const c = new THREE.Color(color)
-  const hsl = {}
-  c.getHSL(hsl)
-
-  const hueDeg = ((hsl.h * 360) % 360 + 360) % 360
-
-  const circDist = (a, b) => {
-    const d = Math.abs(a - b)
-    return Math.min(d, 360 - d) // always 0..180
-  }
-
-  const gaussian = (dist, sigma) => Math.exp(-0.5 * (dist / sigma) * (dist / sigma))
-
-  const d240 = circDist(hueDeg, 240)
-  const d60  = circDist(hueDeg, 60)
-  const d0   = circDist(hueDeg, 0)
-
-  const peak = peakBoost * gaussian(d240, peakSigmaDeg)
-  const dip  = dipBoost  * gaussian(d60,  dipSigmaDeg)
-  const redLift = redLiftBoost * gaussian(d0, redLiftSigmaDeg)
-
-  let baseIntensity = minIntensity + peak + redLift - dip
-
-  if (hsl.l < 0.3) {
-    baseIntensity += (0.3 - hsl.l) * dark_boost
-  } else if (hsl.l > 0.7) {
-    baseIntensity *= light_reduce
-  }
-
-  baseIntensity = Math.max(0, baseIntensity)
-  return baseIntensity * intensity_factor
-}, [color, layerIndex])
+  // Only the first layer (i=0) is emissive; the rest are dimmed reflections.
+  const emissiveIntensity = useMemo(
+    () => (layerIndex === 0 ? computeEmissiveIntensity(color) : 0),
+    [color, layerIndex]
+  )
 
   return (
     <group position={position} rotation={[0, 0, rotation]} scale={scale}>
@@ -632,3 +447,9 @@ export default function SvgIcon({
     </group>
   )
 }
+
+// memo so the camera-orbit/state-tick re-renders of the scene tree don't
+// rebuild the (often expensive) geometry. All array props (frameBounds,
+// position) are stabilized upstream so shallow-equal is sufficient.
+const SvgIcon = memo(SvgIconImpl)
+export default SvgIcon
