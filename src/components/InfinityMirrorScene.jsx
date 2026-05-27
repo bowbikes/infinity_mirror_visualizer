@@ -25,7 +25,8 @@ export default function InfinityMirrorScene({
   iconPosition,
   reflectionDepth,
   autoOrbit,
-  edgeThickness
+  edgeThickness,
+  lightIntensity = 1.0,
 }) {
   const orbitControlsRef = useRef()
   const orbitTimeRef = useRef(0)
@@ -134,6 +135,7 @@ export default function InfinityMirrorScene({
         iconPosition={iconPosition}
         reflectionDepth={reflectionDepth}
         edgeThickness={edgeThickness}
+        lightIntensity={lightIntensity}
       />
     </>
   )

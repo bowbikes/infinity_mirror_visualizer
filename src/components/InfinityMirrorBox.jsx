@@ -26,7 +26,8 @@ export default function InfinityMirrorBox({
   iconRotation,
   iconPosition,
   reflectionDepth,
-  edgeThickness
+  edgeThickness,
+  lightIntensity = 1.0,
 }) {
   // Dimensions in units (1 unit = 10mm).
   const width = frameWidthMm / 10
@@ -109,6 +110,7 @@ export default function InfinityMirrorBox({
         depth={reflectionDepth}
         spacing={spacing}
         edgeThickness={edgeThickness}
+        lightIntensity={lightIntensity}
         frameBounds={frameBounds}
       />
 

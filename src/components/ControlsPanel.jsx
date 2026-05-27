@@ -152,6 +152,8 @@ export default function ControlsPanel({
   onReflectionDepthChange,
   autoOrbit,
   onAutoOrbitChange,
+  lightIntensity,
+  onLightIntensityChange,
   enableBloom,
   onEnableBloomChange,
   onExportClick,
@@ -296,6 +298,18 @@ export default function ControlsPanel({
           />
           <HexInput value={lightColor} onChange={onLightColorChange} />
         </div>
+
+        <SliderControl
+          label="Light Intensity"
+          value={lightIntensity}
+          defaultValue={defaults.lightIntensity}
+          min={0}
+          max={3}
+          step={0.05}
+          onChange={onLightIntensityChange}
+          format={(v) => v.toFixed(2) + '×'}
+          tooltip="Multiplier on top of the per-hue perceptual brightness compensation. 1.00 = the tuned baseline. Crank with Bloom on to push the neon look; dial down for a subtler glow."
+        />
       </div>
 
       {/* Frame Controls */}

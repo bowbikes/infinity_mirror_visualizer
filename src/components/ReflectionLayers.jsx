@@ -25,6 +25,7 @@ export default function ReflectionLayers({
   depth = 7,
   spacing = 1, // layer spacing in units (1 unit = 10mm)
   edgeThickness = 0.2,
+  lightIntensity = 1.0,
   frameBounds = null // [width, height] of frame opening; clips first layer
 }) {
   // Position arrives as a fresh array literal from the parent on every
@@ -74,6 +75,7 @@ export default function ReflectionLayers({
             scale={layer.scale}
             rotation={rotation}
             edgeThickness={edgeThickness}
+            lightIntensity={lightIntensity}
             layerIndex={layer.layerIndex}
             frameBounds={layer.localFrameBounds}
           />

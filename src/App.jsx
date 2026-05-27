@@ -50,6 +50,7 @@ const SHARED_KEYS = [
   'reflectionDepth',
   'autoOrbit',
   'enableBloom',
+  'lightIntensity',
 ]
 const HASH_PREFIX = '#cfg='
 
@@ -91,6 +92,7 @@ const DEFAULTS = {
   reflectionDepth: 7,
   autoOrbit: false,
   enableBloom: false,
+  lightIntensity: 1.0,
 }
 
 function App() {
@@ -149,6 +151,7 @@ function App() {
     if (cfg.reflectionDepth != null) setReflectionDepth(cfg.reflectionDepth)
     if (cfg.autoOrbit != null) setAutoOrbit(cfg.autoOrbit)
     if (cfg.enableBloom != null) setEnableBloom(cfg.enableBloom)
+    if (cfg.lightIntensity != null) setLightIntensity(cfg.lightIntensity)
   }
 
   // Pure snapshot of the shareable/save-able config subset. The same
@@ -171,6 +174,7 @@ function App() {
     reflectionDepth,
     autoOrbit,
     enableBloom,
+    lightIntensity,
   })
 
   // Colors
@@ -201,6 +205,13 @@ function App() {
   // Camera
   const [autoOrbit, setAutoOrbit] = useState(_initial('autoOrbit'))
 
+  // Light intensity multiplier applied on top of the per-hue
+  // compensation curve. 1.0 = the tuned baseline; users can dim or
+  // crank for the look they want.
+  const [lightIntensity, setLightIntensity] = useState(
+    _initial('lightIntensity') ?? 1.0
+  )
+
   // Reset every control back to its DEFAULTS value. Deliberately leaves
   // customSvgPath alone — losing a hard-won upload to an accidental click
   // would be worse than the inconsistency.
@@ -219,6 +230,7 @@ function App() {
     setEdgeThickness(DEFAULTS.edgeThickness)
     setReflectionDepth(DEFAULTS.reflectionDepth)
     setAutoOrbit(DEFAULTS.autoOrbit)
+    setLightIntensity(DEFAULTS.lightIntensity)
   }
 
   // Performance settings
@@ -268,6 +280,7 @@ function App() {
     reflectionDepth,
     autoOrbit,
     enableBloom,
+    lightIntensity,
   ])
 
   const handleCopyShareLink = async () => {
@@ -337,6 +350,7 @@ function App() {
         reflectionDepth,
         autoOrbit,
         enableBloom,
+        lightIntensity,
       })
 
       // Capture canvas snapshot
@@ -381,6 +395,7 @@ function App() {
         reflectionDepth,
         autoOrbit,
         enableBloom,
+        lightIntensity,
       })
 
       // Capture canvas snapshot
@@ -454,6 +469,7 @@ function App() {
             reflectionDepth={reflectionDepth}
             autoOrbit={autoOrbit}
             edgeThickness={edgeThickness}
+            lightIntensity={lightIntensity}
           />
 
           {/* Optional bloom effect for neon glow */}
@@ -540,6 +556,8 @@ function App() {
         onReflectionDepthChange={setReflectionDepth}
         autoOrbit={autoOrbit}
         onAutoOrbitChange={setAutoOrbit}
+        lightIntensity={lightIntensity}
+        onLightIntensityChange={setLightIntensity}
         enableBloom={enableBloom}
         onEnableBloomChange={setEnableBloom}
         onExportClick={handleExportClick}

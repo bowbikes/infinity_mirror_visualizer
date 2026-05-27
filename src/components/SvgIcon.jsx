@@ -44,6 +44,7 @@ function SvgIconImpl({
   rotation = 0,
   position = [0, 0, 0],
   edgeThickness = 0.2,
+  lightIntensity = 1.0,
   layerIndex = 0,
   frameBounds = null // [width, height] of frame opening to clip geometry
 }) {
@@ -370,8 +371,8 @@ function SvgIconImpl({
     }
 
     baseIntensity = Math.max(0, baseIntensity)
-    return baseIntensity * intensity_factor
-  }, [color, layerIndex])
+    return baseIntensity * intensity_factor * lightIntensity
+  }, [color, layerIndex, lightIntensity])
 
   return (
     <group position={position} rotation={[0, 0, rotation]} scale={scale}>
