@@ -118,6 +118,55 @@ function App() {
   const handleOpenCustomArt = () => setIsCustomArtModalOpen(true)
   const handleCloseCustomArt = () => setIsCustomArtModalOpen(false)
 
+  // Apply a serialized config (from a saved preset, the URL hash, or
+  // any future source). Mirrors the lazy useState initializer above but
+  // imperatively — we set every field that's present in the incoming
+  // cfg so partial blobs still apply cleanly.
+  const handleApplyConfig = (cfg) => {
+    if (!cfg) return
+    if (cfg.selectedPreset != null) {
+      setSelectedPreset(cfg.selectedPreset)
+      if (cfg.selectedPreset !== 'custom') setShapeType(cfg.selectedPreset)
+    }
+    if (cfg.wallColor != null) setWallColor(cfg.wallColor)
+    if (cfg.frameColor != null) setFrameColor(cfg.frameColor)
+    if (cfg.lightColor != null) setLightColor(cfg.lightColor)
+    if (cfg.frameWidth != null) setFrameWidth(cfg.frameWidth)
+    if (cfg.frameHeight != null) setFrameHeight(cfg.frameHeight)
+    if (cfg.units != null) setUnits(cfg.units)
+    if (cfg.frameDepthMm != null) setFrameDepthMm(cfg.frameDepthMm)
+    if (cfg.iconScale != null) setIconScale(cfg.iconScale)
+    if (cfg.iconRotation != null) setIconRotation(cfg.iconRotation)
+    if (cfg.iconPositionX != null) setIconPositionX(cfg.iconPositionX)
+    if (cfg.iconPositionY != null) setIconPositionY(cfg.iconPositionY)
+    if (cfg.edgeThickness != null) setEdgeThickness(cfg.edgeThickness)
+    if (cfg.reflectionDepth != null) setReflectionDepth(cfg.reflectionDepth)
+    if (cfg.autoOrbit != null) setAutoOrbit(cfg.autoOrbit)
+    if (cfg.enableBloom != null) setEnableBloom(cfg.enableBloom)
+  }
+
+  // Pure snapshot of the shareable/save-able config subset. The same
+  // shape that the URL hash encodes. PresetsSection captures this
+  // verbatim on Save.
+  const buildCurrentConfig = () => ({
+    selectedPreset,
+    wallColor,
+    frameColor,
+    lightColor,
+    frameWidth,
+    frameHeight,
+    units,
+    frameDepthMm,
+    iconScale,
+    iconRotation,
+    iconPositionX,
+    iconPositionY,
+    edgeThickness,
+    reflectionDepth,
+    autoOrbit,
+    enableBloom,
+  })
+
   // Colors
   const [wallColor, setWallColor] = useState(_initial('wallColor'))
   const [frameColor, setFrameColor] = useState(_initial('frameColor'))
@@ -453,6 +502,8 @@ function App() {
         defaults={DEFAULTS}
         onResetAll={handleResetAll}
         onCopyShareLink={handleCopyShareLink}
+        currentConfig={buildCurrentConfig()}
+        onApplyConfig={handleApplyConfig}
       />
 
       {/* Custom Art Modal — wraps the upload + preprocessing flow. */}

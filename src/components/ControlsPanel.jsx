@@ -7,6 +7,8 @@
  */
 import { useEffect, useState } from 'react'
 
+import PresetsSection from './PresetsSection'
+
 /**
  * Slider + numeric input pair with a tooltip indicator. Double-clicking the
  * label resets the value to `defaultValue` — saves users who slid something
@@ -156,6 +158,8 @@ export default function ControlsPanel({
   defaults,
   onResetAll,
   onCopyShareLink,
+  currentConfig,
+  onApplyConfig,
 }) {
   // Ephemeral "Copied!" feedback on the share-link button.
   const [shareCopied, setShareCopied] = useState(false)
@@ -190,6 +194,11 @@ export default function ControlsPanel({
           Reset all
         </button>
       </div>
+
+      <PresetsSection
+        currentConfig={currentConfig}
+        onApplyConfig={onApplyConfig}
+      />
 
       {/* Icon Selection */}
       <div style={styles.section}>
