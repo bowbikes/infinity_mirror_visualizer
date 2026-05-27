@@ -2,8 +2,7 @@ import { memo, useMemo } from 'react'
 import * as THREE from 'three'
 import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader'
 
-import { clipLineSegment, clipPolygon } from '../utils/svgClip'
-import { computeEmissiveIntensity } from '../utils/emissiveIntensity'
+import { clipPolygon } from '../utils/svgClip'
 
 // Cache SVG parses keyed by raw text — each reflection layer renders its
 // own SvgIcon, and without this every layer would re-parse the same SVG.
@@ -20,10 +19,14 @@ function getParsedSvg(svgText) {
 /**
  * SvgIcon — renders an SVG (preset or uploaded) as a 3D mesh layer.
  *
- * Three render modes:
- *   - 'fill'    flat ShapeGeometry from SVG paths
- *   - 'outline' ExtrudeGeometry with bevel for a stroked look
- *   - 'stroke'  manually built flat ribbon for line-art SVGs (snowflakes etc.)
+ * Uploaded SVGs render as a flat ShapeGeometry from the SVG paths with
+ * evenodd fill — this matches what the laser actually cuts out of the
+ * mirror, so the preview reflects what'll be manufactured. Stroke-only
+ * line art needs to be converted to fills upstream (preprocessing pipeline)
+ * before it reaches this renderer.
+ *
+ * Presets (hexagon/circle/star) render as a ring stroke; they're not part
+ * of the manufacturing flow, so the stroke look is just visual flavor.
  *
  * Scale: 1 unit = 10mm. Frame-bounded geometry gets clipped via
  * Sutherland-Hodgman so reflections don't bleed past the mirror opening.
@@ -31,7 +34,6 @@ function getParsedSvg(svgText) {
 function SvgIconImpl({
   shapeType = 'hexagon',
   customSvgPath,
-  svgRenderMode = 'outline',
   color = '#00ffff',
   scale = 1,
   rotation = 0,
@@ -43,241 +45,93 @@ function SvgIconImpl({
 
   // Create extruded outline geometry
   const outlineGeometry = useMemo(() => {
-    // Handle custom SVG path
+    // Custom SVG: render as flat fill via SVGLoader → ShapeGeometry with
+    // evenodd holes. Matches what the laser actually cuts.
     if (shapeType === 'custom' && customSvgPath) {
       try {
-        // Cached parse so the N reflection layers each pay once, not N times.
         const svgData = getParsedSvg(customSvgPath)
 
-        // Calculate bounds across ALL paths and detect if SVG uses strokes
+        // Compute bounds across every subpath so the icon fits into a
+        // consistent target size regardless of the source viewBox.
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-        let hasStroke = false
-        let hasFill = false
-
-        // First pass: detect stroke/fill and calculate bounds
-        svgData.paths.forEach(path => {
-          // Check if this path has stroke or fill
-          const style = path.userData?.style || {}
-
-          // Detect stroke - must be explicitly set
-          if (style.stroke && style.stroke !== 'none' && style.stroke !== 'transparent') {
-            const strokeWidth = parseFloat(style.strokeWidth) || 1
-            if (strokeWidth > 0.5) { // Ignore very thin decorative strokes
-              hasStroke = true
+        svgData.paths.forEach((path) => {
+          path.subPaths.forEach((subPath) => {
+            for (const p of subPath.getPoints()) {
+              if (p.x < minX) minX = p.x
+              if (p.x > maxX) maxX = p.x
+              if (p.y < minY) minY = p.y
+              if (p.y > maxY) maxY = p.y
             }
-          }
-
-          // Detect fill - if not explicitly set to 'none', assume it's filled
-          // This handles SVGs without explicit fill attributes (like test-heart.svg)
-          const fillValue = style.fill
-          if (fillValue === undefined || (fillValue && fillValue !== 'none' && fillValue !== 'transparent')) {
-            hasFill = true
-          }
-
-          // Get bounds from subPaths (works for lines, polylines, paths)
-          path.subPaths.forEach(subPath => {
-            const points = subPath.getPoints()
-            points.forEach(p => {
-              minX = Math.min(minX, p.x)
-              maxX = Math.max(maxX, p.x)
-              minY = Math.min(minY, p.y)
-              maxY = Math.max(maxY, p.y)
-            })
           })
         })
+        if (minX === Infinity) return createFallbackGeometry()
 
-        const width = maxX - minX
-        const height = maxY - minY
-        const maxDim = Math.max(width, height)
         const targetSize = 10
+        const maxDim = Math.max(maxX - minX, maxY - minY) || 1
         const scaleFactor = targetSize / maxDim
         const centerX = (minX + maxX) / 2
         const centerY = (minY + maxY) / 2
 
-        // Choose rendering mode based on SVG content
-        // If SVG has strokes (like snowflake), use tube/extrude rendering
-        // If it has fills or user chose fill mode, use fill rendering
-        const useStrokeRendering = (hasStroke && !hasFill) || svgRenderMode === 'stroke'
-
-        if (useStrokeRendering) {
-          // Stroke rendering - create simple flat rectangles for each line segment
-          const geometries = []
-
-          svgData.paths.forEach((path) => {
-            path.subPaths.forEach((subPath) => {
-              const points = subPath.getPoints()
-              if (points.length < 2) return
-
-              // Transform points
-              const transformedPoints = points.map(p => ({
-                x: (p.x - centerX) * scaleFactor,
-                y: -(p.y - centerY) * scaleFactor
-              }))
-
-              // Create flat rectangular strips for each line segment with clipping
-              const halfWidth = edgeThickness * 0.5
-
-              for (let i = 0; i < transformedPoints.length - 1; i++) {
-                const p1 = transformedPoints[i]
-                const p2 = transformedPoints[i + 1]
-
-                // Clip line segment to frame bounds
-                const clipped = clipLineSegment(p1, p2, frameBounds)
-                if (!clipped) continue // Line segment completely outside bounds
-
-                const start = new THREE.Vector3(clipped[0].x, clipped[0].y, 0)
-                const end = new THREE.Vector3(clipped[1].x, clipped[1].y, 0)
-
-                // Calculate perpendicular direction for line width
-                const dx = end.x - start.x
-                const dy = end.y - start.y
-                const length = Math.sqrt(dx * dx + dy * dy)
-
-                if (length < 0.001) continue // Skip zero-length segments
-
-                // Perpendicular direction (rotated 90 degrees in 2D)
-                const perpX = -dy / length
-                const perpY = dx / length
-
-                // Create rectangular geometry for this segment using BufferGeometry
-                const positions = new Float32Array([
-                  // Triangle 1
-                  start.x + perpX * halfWidth, start.y + perpY * halfWidth, 0,
-                  start.x - perpX * halfWidth, start.y - perpY * halfWidth, 0,
-                  end.x - perpX * halfWidth, end.y - perpY * halfWidth, 0,
-                  // Triangle 2
-                  start.x + perpX * halfWidth, start.y + perpY * halfWidth, 0,
-                  end.x - perpX * halfWidth, end.y - perpY * halfWidth, 0,
-                  end.x + perpX * halfWidth, end.y + perpY * halfWidth, 0
-                ])
-
-                const segmentGeometry = new THREE.BufferGeometry()
-                segmentGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-                segmentGeometry.computeVertexNormals()
-
-                geometries.push(segmentGeometry)
-              }
-            })
-          })
-
-          if (geometries.length === 0) {
-            return createFallbackGeometry()
-          }
-
-          // Merge all geometries efficiently
-          const mergedGeometry = new THREE.BufferGeometry()
-          const mergedPositions = []
-
-          geometries.forEach(geo => {
-            const positions = geo.attributes.position.array
-            for (let i = 0; i < positions.length; i++) {
-              mergedPositions.push(positions[i])
-            }
-          })
-
-          mergedGeometry.setAttribute('position', new THREE.Float32BufferAttribute(mergedPositions, 3))
-          mergedGeometry.computeVertexNormals()
-
-          return mergedGeometry
-        } else {
-          // Fill rendering - use even-odd winding for proper hole handling
-          let allShapes = []
-          svgData.paths.forEach(path => {
-            // Use even-odd fill rule (false) for proper handling of internal cutouts
-            const pathShapes = path.toShapes(false)
-            allShapes = allShapes.concat(pathShapes)
-          })
-
-          if (allShapes.length === 0) {
-            return createFallbackGeometry()
-          }
-
-          const geometries = []
-
-          allShapes.forEach(shape => {
-            const points = shape.getPoints()
-            if (points.length < 3) return
-
-            const fillShape = new THREE.Shape()
-
-            // Transform points (scale, center, flip Y)
-            const transformedPoints = points.map(p => ({
-              x: (p.x - centerX) * scaleFactor,
-              y: -(p.y - centerY) * scaleFactor
-            }))
-
-            // Clip polygon to frame bounds
-            const clippedPoints = clipPolygon(transformedPoints, frameBounds)
-            if (clippedPoints.length < 3) return // Not enough points after clipping
-
-            clippedPoints.forEach((p, i) => {
-              if (i === 0) fillShape.moveTo(p.x, p.y)
-              else fillShape.lineTo(p.x, p.y)
-            })
-            fillShape.closePath()
-
-            // Preserve holes from the original shape
-            if (shape.holes && shape.holes.length > 0) {
-              shape.holes.forEach(hole => {
-                const holePoints = hole.getPoints()
-                if (holePoints.length < 3) return
-
-                const holeShape = new THREE.Path()
-
-                const transformedHolePoints = holePoints.map(p => ({
-                  x: (p.x - centerX) * scaleFactor,
-                  y: -(p.y - centerY) * scaleFactor
-                }))
-
-                // Clip hole polygon to frame bounds
-                const clippedHolePoints = clipPolygon(transformedHolePoints, frameBounds)
-                if (clippedHolePoints.length < 3) return // Not enough points after clipping
-
-                clippedHolePoints.forEach((p, i) => {
-                  if (i === 0) holeShape.moveTo(p.x, p.y)
-                  else holeShape.lineTo(p.x, p.y)
-                })
-                holeShape.closePath()
-                fillShape.holes.push(holeShape)
-              })
-            }
-
-            if (svgRenderMode === 'outline') {
-              // For outline mode, use THREE's ExtrudeGeometry with bevelEnabled to create strokes
-              // This gives us clean, consistent strokes without manual offset calculations
-              const extrudeSettings = {
-                depth: 0.01,  // Minimal Z depth
-                bevelEnabled: true,
-                bevelThickness: edgeThickness * 0.05,  // Controls stroke width
-                bevelSize: edgeThickness * 0.05,
-                bevelSegments: 1
-              }
-
-              geometries.push(new THREE.ExtrudeGeometry(fillShape, extrudeSettings))
-            } else {
-              // Fill mode: show the filled shape
-              geometries.push(new THREE.ShapeGeometry(fillShape))
-            }
-          })
-
-          // Merge all geometries into one
-          if (geometries.length === 1) {
-            return geometries[0]
-          } else {
-            const mergedGeometry = new THREE.BufferGeometry()
-            const mergedPositions = []
-
-            geometries.forEach(geo => {
-              const positions = geo.attributes.position.array
-              for (let i = 0; i < positions.length; i++) {
-                mergedPositions.push(positions[i])
-              }
-            })
-
-            mergedGeometry.setAttribute('position', new THREE.Float32BufferAttribute(mergedPositions, 3))
-            return mergedGeometry
-          }
+        // Evenodd fill rule (toShapes(false)) gives us outer + holes,
+        // matching the preprocessing pipeline that produced this SVG.
+        const allShapes = []
+        for (const path of svgData.paths) {
+          for (const s of path.toShapes(false)) allShapes.push(s)
         }
+        if (allShapes.length === 0) return createFallbackGeometry()
+
+        const xform = (p) => ({
+          x: (p.x - centerX) * scaleFactor,
+          y: -(p.y - centerY) * scaleFactor,
+        })
+
+        const geometries = []
+        for (const shape of allShapes) {
+          const outer = shape.getPoints()
+          if (outer.length < 3) continue
+          const outerXf = outer.map(xform)
+          const outerClipped = clipPolygon(outerXf, frameBounds)
+          if (outerClipped.length < 3) continue
+
+          const fillShape = new THREE.Shape()
+          outerClipped.forEach((p, i) => {
+            if (i === 0) fillShape.moveTo(p.x, p.y)
+            else fillShape.lineTo(p.x, p.y)
+          })
+          fillShape.closePath()
+
+          for (const hole of shape.holes || []) {
+            const hp = hole.getPoints()
+            if (hp.length < 3) continue
+            const holeClipped = clipPolygon(hp.map(xform), frameBounds)
+            if (holeClipped.length < 3) continue
+            const holePath = new THREE.Path()
+            holeClipped.forEach((p, i) => {
+              if (i === 0) holePath.moveTo(p.x, p.y)
+              else holePath.lineTo(p.x, p.y)
+            })
+            holePath.closePath()
+            fillShape.holes.push(holePath)
+          }
+
+          geometries.push(new THREE.ShapeGeometry(fillShape))
+        }
+
+        if (geometries.length === 0) return createFallbackGeometry()
+        if (geometries.length === 1) return geometries[0]
+
+        // Merge into one BufferGeometry so we render in a single draw call.
+        const merged = new THREE.BufferGeometry()
+        const positions = []
+        for (const g of geometries) {
+          const arr = g.attributes.position.array
+          for (let i = 0; i < arr.length; i++) positions.push(arr[i])
+        }
+        merged.setAttribute(
+          'position',
+          new THREE.Float32BufferAttribute(positions, 3)
+        )
+        return merged
       } catch (error) {
         console.error('Error parsing custom SVG path:', error)
         return createFallbackGeometry()
@@ -425,13 +279,71 @@ function SvgIconImpl({
 
     // Create flat geometry with the stroke outline
     return new THREE.ShapeGeometry(outerShape)
-  }, [shapeType, customSvgPath, svgRenderMode, edgeThickness, frameBounds])
+  }, [shapeType, customSvgPath, edgeThickness, frameBounds])
 
-  // Only the first layer (i=0) is emissive; the rest are dimmed reflections.
-  const emissiveIntensity = useMemo(
-    () => (layerIndex === 0 ? computeEmissiveIntensity(color) : 0),
-    [color, layerIndex]
-  )
+  // Calculate emissive intensity based on color hue.
+  // Only the first layer (layerIndex === 0) is emissive; reflections are not.
+  //
+  // LEDs of equal physical brightness don't appear equally bright to the eye —
+  // yellows and greens (around 60°) look punchier than blues (240°). This
+  // fudges the emissive multiplier by hue so different colors land at a
+  // similar perceived brightness in the rendered scene. All constants are
+  // hand-tuned against the bloom pipeline; kept inline so the per-render
+  // path doesn't pull from a shared scratch object (extraction broke
+  // perceptual uniformity in practice).
+  const emissiveIntensity = useMemo(() => {
+    if (layerIndex !== 0) return 0
+
+    const intensity_factor = 0.80
+    const minIntensity = 2.5
+
+    const peakBoost = 9.0
+    const peakSigmaDeg = 40.0
+
+    // soften the dip so 44–70° isn't overly dim
+    const dipBoost = 1.4
+    const dipSigmaDeg = 35.0
+
+    // gently lift reds so 324–30° stays consistent
+    const redLiftBoost = 1.75
+    const redLiftSigmaDeg = 55.0
+
+    // lightness handling
+    const dark_boost = 16.67
+    const light_reduce = 0.88
+
+    const c = new THREE.Color(color)
+    const hsl = {}
+    c.getHSL(hsl)
+
+    const hueDeg = ((hsl.h * 360) % 360 + 360) % 360
+
+    const circDist = (a, b) => {
+      const d = Math.abs(a - b)
+      return Math.min(d, 360 - d)
+    }
+
+    const gaussian = (dist, sigma) => Math.exp(-0.5 * (dist / sigma) * (dist / sigma))
+
+    const d240 = circDist(hueDeg, 240)
+    const d60  = circDist(hueDeg, 60)
+    const d0   = circDist(hueDeg, 0)
+
+    const peak = peakBoost * gaussian(d240, peakSigmaDeg)
+    const dip  = dipBoost  * gaussian(d60,  dipSigmaDeg)
+    const redLift = redLiftBoost * gaussian(d0, redLiftSigmaDeg)
+
+    let baseIntensity = minIntensity + peak + redLift - dip
+
+    if (hsl.l < 0.3) {
+      baseIntensity += (0.3 - hsl.l) * dark_boost
+    } else if (hsl.l > 0.7) {
+      baseIntensity *= light_reduce
+    }
+
+    baseIntensity = Math.max(0, baseIntensity)
+    return baseIntensity * intensity_factor
+  }, [color, layerIndex])
 
   return (
     <group position={position} rotation={[0, 0, rotation]} scale={scale}>

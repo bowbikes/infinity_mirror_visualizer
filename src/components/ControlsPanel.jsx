@@ -18,8 +18,6 @@ export default function ControlsPanel({
   selectedPreset,
   onPresetChange,
   onCustomUpload,
-  svgRenderMode,
-  onSvgRenderModeChange,
   wallColor,
   onWallColorChange,
   frameColor,
@@ -130,28 +128,21 @@ export default function ControlsPanel({
         {selectedPreset === 'custom' && (
           <>
             <div style={styles.control}>
-              <label style={styles.label}>Upload SVG:</label>
+              <label style={styles.label}>Upload SVG (already-black):</label>
               <input
                 type="file"
                 accept=".svg,image/svg+xml"
                 onChange={handleFileUpload}
                 style={styles.fileInput}
               />
+              <div style={styles.note}>
+                Custom art renders as a flat fill matching the laser cut.
+                For JPG / colored / line-art inputs, use the Custom Art
+                preprocessing panel above instead.
+              </div>
               {uploadError && (
                 <div style={styles.error}>{uploadError}</div>
               )}
-            </div>
-            <div style={styles.control}>
-              <label style={styles.label}>Render Mode:</label>
-              <select
-                value={svgRenderMode}
-                onChange={(e) => onSvgRenderModeChange(e.target.value)}
-                style={styles.select}
-              >
-                <option value="fill">Fill (flat)</option>
-                <option value="outline">Outline (extruded)</option>
-                <option value="stroke">Stroke (tubes - best for line art)</option>
-              </select>
             </div>
           </>
         )}

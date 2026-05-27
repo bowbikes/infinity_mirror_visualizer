@@ -18,7 +18,6 @@ const _scratchHsl = { h: 0, s: 0, l: 0 }
 export default function ReflectionLayers({
   shapeType = 'hexagon',
   customSvgPath,
-  svgRenderMode,
   color,
   scale,
   rotation,
@@ -71,7 +70,6 @@ export default function ReflectionLayers({
           <SvgIcon
             shapeType={shapeType}
             customSvgPath={customSvgPath}
-            svgRenderMode={svgRenderMode}
             color={layer.color}
             scale={layer.scale}
             rotation={rotation}

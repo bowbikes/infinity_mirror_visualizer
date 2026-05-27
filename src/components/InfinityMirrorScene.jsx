@@ -14,7 +14,6 @@ import InfinityMirrorBox from './InfinityMirrorBox'
 export default function InfinityMirrorScene({
   shapeType = 'hexagon',
   customSvgPath,
-  svgRenderMode,
   wallColor,
   frameColor,
   lightColor,
@@ -125,7 +124,6 @@ export default function InfinityMirrorScene({
       <InfinityMirrorBox
         shapeType={shapeType}
         customSvgPath={customSvgPath}
-        svgRenderMode={svgRenderMode}
         lightColor={lightColor}
         frameColor={frameColor}
         frameDepthMm={frameDepthMm}

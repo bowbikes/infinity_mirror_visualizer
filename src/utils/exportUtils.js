@@ -75,7 +75,6 @@ export function serializeConfiguration(state) {
     icon: {
       selectedPreset: state.selectedPreset,
       shapeType: state.shapeType,
-      svgRenderMode: state.svgRenderMode,
       customSvgFilename: hasCustomSvg ? CUSTOM_SVG_FILENAME : null,
     },
 

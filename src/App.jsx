@@ -33,7 +33,6 @@ function App() {
   const [selectedPreset, setSelectedPreset] = useState('hexagon')
   const [shapeType, setShapeType] = useState('hexagon')
   const [customSvgPath, setCustomSvgPath] = useState(null)
-  const [svgRenderMode, setSvgRenderMode] = useState('outline') // 'outline' or 'fill'
 
   // Colors
   const [wallColor, setWallColor] = useState('#fffceb')
@@ -107,14 +106,10 @@ function App() {
       return
     }
 
-    // Store the entire SVG content
-    // SvgIcon will use SVGLoader which handles all SVG elements (path, line, polyline, etc.)
+    // Store the entire SVG content — SvgIcon parses it via Three.js SVGLoader.
     setCustomSvgPath(svgText)
     setShapeType('custom')
     setSelectedPreset('custom')
-
-    // Keep outline mode as default for custom SVGs
-    // User can manually switch to stroke mode if needed via the controls
   }
 
   // Export handlers
@@ -130,7 +125,6 @@ function App() {
         selectedPreset,
         shapeType,
         customSvgPath,
-        svgRenderMode,
         wallColor,
         frameColor,
         lightColor,
@@ -175,7 +169,6 @@ function App() {
         selectedPreset,
         shapeType,
         customSvgPath,
-        svgRenderMode,
         wallColor,
         frameColor,
         lightColor,
@@ -243,7 +236,6 @@ function App() {
           <InfinityMirrorScene
             shapeType={shapeType}
             customSvgPath={customSvgPath}
-            svgRenderMode={svgRenderMode}
             wallColor={wallColor}
             frameColor={frameColor}
             lightColor={lightColor}
@@ -293,8 +285,6 @@ function App() {
         selectedPreset={selectedPreset}
         onPresetChange={handlePresetChange}
         onCustomUpload={handleCustomUpload}
-        svgRenderMode={svgRenderMode}
-        onSvgRenderModeChange={setSvgRenderMode}
         wallColor={wallColor}
         onWallColorChange={setWallColor}
         frameColor={frameColor}

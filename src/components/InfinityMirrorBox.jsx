@@ -17,7 +17,6 @@ import ReflectionLayers from './ReflectionLayers'
 export default function InfinityMirrorBox({
   shapeType = 'hexagon',
   customSvgPath,
-  svgRenderMode,
   lightColor,
   frameColor,
   frameDepthMm,
@@ -99,7 +98,6 @@ export default function InfinityMirrorBox({
       <ReflectionLayers
         shapeType={shapeType}
         customSvgPath={customSvgPath}
-        svgRenderMode={svgRenderMode}
         color={lightColor}
         scale={iconScale * 1.5}
         rotation={iconRotation}
