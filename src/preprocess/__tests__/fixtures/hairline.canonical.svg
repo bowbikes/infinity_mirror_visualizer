@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <!-- A 50x50 square (thick) + a 100x1 hairline strip. With min_feature_width_mm
+       set between 1 and 50, the hairline gets dropped but the square stays. -->
+  <path d="M 25 25 L 75 25 L 75 75 L 25 75 Z
+           M 50 100 L 150 100 L 150 101 L 50 101 Z"
+        fill="#000000" fill-rule="evenodd"/>
+</svg>

@@ -6,6 +6,7 @@ export default function ExportModal({
   onClose,
   onExport,
   onSendToManufacturer,
+  canSendToManufacturer = false,
   isProcessing
 }) {
   const [customerName, setCustomerName] = useState('');
@@ -55,34 +56,36 @@ export default function ExportModal({
           <ul className="export-features">
             <li>A preview snapshot of your design</li>
             <li>Complete configuration (colors, shape, transformations)</li>
-            <li>Cryptographic signature for tamper detection</li>
+            <li>SHA-256 integrity checksum (catches accidental corruption)</li>
           </ul>
 
-          <div className="form-section">
-            <h3>Export Method</h3>
-            <div className="radio-group">
-              <label className="radio-label">
-                <input
-                  type="radio"
-                  value="download"
-                  checked={sendMethod === 'download'}
-                  onChange={(e) => setSendMethod(e.target.value)}
-                  disabled={isProcessing}
-                />
-                <span>Download ZIP file</span>
-              </label>
-              <label className="radio-label">
-                <input
-                  type="radio"
-                  value="send"
-                  checked={sendMethod === 'send'}
-                  onChange={(e) => setSendMethod(e.target.value)}
-                  disabled={isProcessing}
-                />
-                <span>Send directly to manufacturer</span>
-              </label>
+          {canSendToManufacturer && (
+            <div className="form-section">
+              <h3>Export Method</h3>
+              <div className="radio-group">
+                <label className="radio-label">
+                  <input
+                    type="radio"
+                    value="download"
+                    checked={sendMethod === 'download'}
+                    onChange={(e) => setSendMethod(e.target.value)}
+                    disabled={isProcessing}
+                  />
+                  <span>Download ZIP file</span>
+                </label>
+                <label className="radio-label">
+                  <input
+                    type="radio"
+                    value="send"
+                    checked={sendMethod === 'send'}
+                    onChange={(e) => setSendMethod(e.target.value)}
+                    disabled={isProcessing}
+                  />
+                  <span>Send directly to manufacturer</span>
+                </label>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="form-section">
             <h3>Customer Information {sendMethod === 'send' && <span className="required">*</span>}</h3>
@@ -133,9 +136,10 @@ export default function ExportModal({
           </div>
 
           <div className="security-notice">
-            <strong>Security:</strong> This export includes a cryptographic signature.
-            Any modifications to the configuration file will invalidate the signature,
-            ensuring the manufacturer receives authentic, unaltered designs.
+            <strong>Integrity:</strong> The configuration file carries a
+            SHA-256 hash so the manufacturer can verify it arrived
+            uncorrupted. Authentication of the sender, if needed, should
+            happen out-of-band (signed email, PGP, etc.).
           </div>
         </div>
 

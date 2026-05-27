@@ -14,11 +14,10 @@ import { useState } from 'react'
  * - Auto-orbit toggle
  */
 export default function ControlsPanel({
+  topSection,
   selectedPreset,
   onPresetChange,
   onCustomUpload,
-  svgRenderMode,
-  onSvgRenderModeChange,
   wallColor,
   onWallColorChange,
   frameColor,
@@ -31,8 +30,8 @@ export default function ControlsPanel({
   onFrameHeightChange,
   units,
   onUnitsChange,
-  mirrorSpacing,
-  onMirrorSpacingChange,
+  frameDepthMm,
+  onFrameDepthChange,
   iconScale,
   onIconScaleChange,
   iconRotation,
@@ -107,6 +106,8 @@ export default function ControlsPanel({
     <div style={styles.panel}>
       <h2 style={styles.title}>Infinity Mirror Configurator</h2>
 
+      {topSection}
+
       {/* Icon Selection */}
       <div style={styles.section}>
         <h3 style={styles.sectionTitle}>Icon</h3>
@@ -127,28 +128,21 @@ export default function ControlsPanel({
         {selectedPreset === 'custom' && (
           <>
             <div style={styles.control}>
-              <label style={styles.label}>Upload SVG:</label>
+              <label style={styles.label}>Upload SVG (already-black):</label>
               <input
                 type="file"
                 accept=".svg,image/svg+xml"
                 onChange={handleFileUpload}
                 style={styles.fileInput}
               />
+              <div style={styles.note}>
+                Custom art renders as a flat fill matching the laser cut.
+                For JPG / colored / line-art inputs, use the Custom Art
+                preprocessing panel above instead.
+              </div>
               {uploadError && (
                 <div style={styles.error}>{uploadError}</div>
               )}
-            </div>
-            <div style={styles.control}>
-              <label style={styles.label}>Render Mode:</label>
-              <select
-                value={svgRenderMode}
-                onChange={(e) => onSvgRenderModeChange(e.target.value)}
-                style={styles.select}
-              >
-                <option value="fill">Fill (flat)</option>
-                <option value="outline">Outline (extruded)</option>
-                <option value="stroke">Stroke (tubes - best for line art)</option>
-              </select>
             </div>
           </>
         )}
@@ -261,14 +255,15 @@ export default function ControlsPanel({
 
         <div style={styles.control}>
           <label style={styles.label}>
-            Frame Depth: {mirrorSpacing + 10}mm</label>
+            Frame Depth: {frameDepthMm}mm
+          </label>
           <input
             type="range"
-            min="11"
-            max="120"
+            min="21"
+            max="130"
             step="2"
-            value={mirrorSpacing}
-            onChange={(e) => onMirrorSpacingChange(Number(e.target.value))}
+            value={frameDepthMm}
+            onChange={(e) => onFrameDepthChange(Number(e.target.value))}
             style={styles.slider}
           />
         </div>

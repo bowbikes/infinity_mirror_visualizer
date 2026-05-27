@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import InfinityMirrorScene from './components/InfinityMirrorScene'
 import ControlsPanel from './components/ControlsPanel'
+import PreprocessPanel from './components/PreprocessPanel'
 import ExportModal from './components/ExportModal'
 import {
   serializeConfiguration,
@@ -32,7 +33,6 @@ function App() {
   const [selectedPreset, setSelectedPreset] = useState('hexagon')
   const [shapeType, setShapeType] = useState('hexagon')
   const [customSvgPath, setCustomSvgPath] = useState(null)
-  const [svgRenderMode, setSvgRenderMode] = useState('outline') // 'outline' or 'fill'
 
   // Colors
   const [wallColor, setWallColor] = useState('#fffceb')
@@ -44,8 +44,10 @@ function App() {
   const [frameHeight, setFrameHeight] = useState(300) // mm
   const [units, setUnits] = useState('mm') // 'mm' or 'in'
 
-  // Mirror settings
-  const [mirrorSpacing, setMirrorSpacing] = useState(20) // mm
+  // Frame depth (slider value matches what the user reads in the label).
+  // Internally the box decomposes this into mirror spacing + 10mm of frame
+  // thickness when building geometry.
+  const [frameDepthMm, setFrameDepthMm] = useState(30) // mm
 
   // Icon transform
   const [iconScale, setIconScale] = useState(1.0)
@@ -67,6 +69,14 @@ function App() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const canvasRef = useRef(null)
+
+  // Receive the preprocessed manufacturable black SVG from PreprocessPanel.
+  // Flips to 'custom' shape so the 3D scene picks it up.
+  const handlePreprocessed = (manufacturableSvg) => {
+    setCustomSvgPath(manufacturableSvg)
+    setShapeType('custom')
+    setSelectedPreset('custom')
+  }
 
   // Update shape type when preset changes
   useEffect(() => {
@@ -96,14 +106,10 @@ function App() {
       return
     }
 
-    // Store the entire SVG content
-    // SvgIcon will use SVGLoader which handles all SVG elements (path, line, polyline, etc.)
+    // Store the entire SVG content — SvgIcon parses it via Three.js SVGLoader.
     setCustomSvgPath(svgText)
     setShapeType('custom')
     setSelectedPreset('custom')
-
-    // Keep outline mode as default for custom SVGs
-    // User can manually switch to stroke mode if needed via the controls
   }
 
   // Export handlers
@@ -119,11 +125,10 @@ function App() {
         selectedPreset,
         shapeType,
         customSvgPath,
-        svgRenderMode,
         wallColor,
         frameColor,
         lightColor,
-        mirrorSpacing,
+        frameDepthMm,
         iconScale,
         iconRotation,
         iconPositionX,
@@ -139,7 +144,7 @@ function App() {
       const snapshot = await captureCanvasSnapshot(canvas)
 
       // Create ZIP file
-      const zipBlob = await createExportZip(config, snapshot, customerInfo)
+      const zipBlob = await createExportZip(config, snapshot, customerInfo, customSvgPath)
 
       // Download the file
       const filename = `infinity-mirror-${customerInfo.name?.replace(/\s+/g, '-') || 'config'}-${Date.now()}.zip`
@@ -164,11 +169,10 @@ function App() {
         selectedPreset,
         shapeType,
         customSvgPath,
-        svgRenderMode,
         wallColor,
         frameColor,
         lightColor,
-        mirrorSpacing,
+        frameDepthMm,
         iconScale,
         iconRotation,
         iconPositionX,
@@ -184,12 +188,15 @@ function App() {
       const snapshot = await captureCanvasSnapshot(canvas)
 
       // Create ZIP file
-      const zipBlob = await createExportZip(config, snapshot, customerInfo)
+      const zipBlob = await createExportZip(config, snapshot, customerInfo, customSvgPath)
 
-      // NOTE: Replace this endpoint with your actual manufacturer endpoint
-      const manufacturerEndpoint = 'https://your-manufacturer-api.com/upload'
-
-      // Send to manufacturer
+      // Manufacturer endpoint comes from build-time env (VITE_MANUFACTURER_ENDPOINT).
+      // When not set, the Send-to-Manufacturer button is hidden in ExportModal —
+      // this branch only runs if the env was present at build time.
+      const manufacturerEndpoint = import.meta.env.VITE_MANUFACTURER_ENDPOINT
+      if (!manufacturerEndpoint) {
+        throw new Error('Manufacturer endpoint not configured for this build.')
+      }
       const result = await sendToManufacturer(zipBlob, customerInfo, manufacturerEndpoint)
 
       if (result.success) {
@@ -229,11 +236,10 @@ function App() {
           <InfinityMirrorScene
             shapeType={shapeType}
             customSvgPath={customSvgPath}
-            svgRenderMode={svgRenderMode}
             wallColor={wallColor}
             frameColor={frameColor}
             lightColor={lightColor}
-            mirrorSpacingMm={mirrorSpacing}
+            frameDepthMm={frameDepthMm}
             frameWidthMm={frameWidth}
             frameHeightMm={frameHeight}
             iconScale={iconScale}
@@ -271,13 +277,14 @@ function App() {
         </div>
       </div>
 
-      {/* Controls Panel */}
+      {/* Controls Panel — preprocessing section injected at the top */}
       <ControlsPanel
+        topSection={
+          <PreprocessPanel onPreprocessed={handlePreprocessed} />
+        }
         selectedPreset={selectedPreset}
         onPresetChange={handlePresetChange}
         onCustomUpload={handleCustomUpload}
-        svgRenderMode={svgRenderMode}
-        onSvgRenderModeChange={setSvgRenderMode}
         wallColor={wallColor}
         onWallColorChange={setWallColor}
         frameColor={frameColor}
@@ -290,8 +297,8 @@ function App() {
         onFrameHeightChange={setFrameHeight}
         units={units}
         onUnitsChange={setUnits}
-        mirrorSpacing={mirrorSpacing}
-        onMirrorSpacingChange={setMirrorSpacing}
+        frameDepthMm={frameDepthMm}
+        onFrameDepthChange={setFrameDepthMm}
         iconScale={iconScale}
         onIconScaleChange={setIconScale}
         iconRotation={iconRotation}
@@ -315,6 +322,7 @@ function App() {
         onClose={() => setIsExportModalOpen(false)}
         onExport={handleExportDownload}
         onSendToManufacturer={handleSendToManufacturer}
+        canSendToManufacturer={Boolean(import.meta.env.VITE_MANUFACTURER_ENDPOINT)}
         isProcessing={isExporting}
       />
     </div>
