@@ -6,7 +6,7 @@
  * frame dimensions, transform, camera, and export controls.
  */
 export default function ControlsPanel({
-  topSection,
+  customArtSection,
   selectedPreset,
   onPresetChange,
   wallColor,
@@ -53,8 +53,6 @@ export default function ControlsPanel({
     <div style={styles.panel}>
       <h2 style={styles.title}>Infinity Mirror Configurator</h2>
 
-      {topSection}
-
       {/* Icon Selection */}
       <div style={styles.section}>
         <h3 style={styles.sectionTitle}>Icon</h3>
@@ -71,16 +69,11 @@ export default function ControlsPanel({
             <option value="custom">Custom Upload</option>
           </select>
         </div>
-
-        {selectedPreset === 'custom' && (
-          <div style={styles.note}>
-            Upload custom art via the <strong>Custom Art</strong> panel at
-            the top. JPGs, PNGs, colored SVGs, and line-art SVGs all flow
-            through the manufacturability preprocessor and render as the
-            flat fill the laser will cut.
-          </div>
-        )}
       </div>
+
+      {/* Custom Art preprocessing surface — appears directly below Icon
+          when the user selects Custom Upload, hidden otherwise. */}
+      {customArtSection}
 
       {/* Colors */}
       <div style={styles.section}>

@@ -261,7 +261,7 @@ function App() {
           set to Custom Upload, so there's never both a preset and an
           unrelated upload box visible at once. */}
       <ControlsPanel
-        topSection={
+        customArtSection={
           selectedPreset === 'custom'
             ? <PreprocessPanel onPreprocessed={handlePreprocessed} />
             : null

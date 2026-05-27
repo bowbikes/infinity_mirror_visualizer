@@ -21,6 +21,18 @@ export default defineConfig(({ mode }) => ({
           }),
         ]),
   ],
+  // __dirname / __filename are CommonJS / Node globals that
+  // vite-plugin-node-polyfills doesn't cover. Stub them at build time so
+  // transitive deps that reference them (jimp / potrace's font loaders
+  // do this) don't crash with "__dirname is not defined". Pointing at
+  // "/" is a no-op for any path-join logic that follows.
+  define:
+    mode === 'test'
+      ? {}
+      : {
+          __dirname: JSON.stringify('/'),
+          __filename: JSON.stringify('/index.js'),
+        },
   server: { port: 3000 },
   test: {
     environment: 'jsdom',
