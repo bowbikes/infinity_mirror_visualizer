@@ -92,26 +92,6 @@ function App() {
     }
   }
 
-  const handleCustomUpload = (svgText) => {
-    // Parse SVG - just pass the entire SVG text
-    // The SvgIcon component will handle parsing all elements
-    const parser = new DOMParser()
-    const svgDoc = parser.parseFromString(svgText, 'image/svg+xml')
-
-    // Check for parsing errors
-    const parseError = svgDoc.querySelector('parsererror')
-    if (parseError) {
-      console.error('SVG parsing error:', parseError)
-      alert('SVG parsing error. Please check the file format.')
-      return
-    }
-
-    // Store the entire SVG content — SvgIcon parses it via Three.js SVGLoader.
-    setCustomSvgPath(svgText)
-    setShapeType('custom')
-    setSelectedPreset('custom')
-  }
-
   // Export handlers
   const handleExportClick = () => {
     setIsExportModalOpen(true)
@@ -284,7 +264,6 @@ function App() {
         }
         selectedPreset={selectedPreset}
         onPresetChange={handlePresetChange}
-        onCustomUpload={handleCustomUpload}
         wallColor={wallColor}
         onWallColorChange={setWallColor}
         frameColor={frameColor}
