@@ -220,6 +220,111 @@ export function polygonsToSvg(polygons, viewBox) {
   return parts.join('')
 }
 
+/* ---------------- stroke → fill (for line-art SVGs) ---------------- */
+
+/**
+ * Walk every stroked path in an SVG, offset each polyline by stroke-width/2
+ * via Clipper, union the results, and emit a flat black-fill SVG. Lossless
+ * conversion that preserves the source stroke widths exactly — unlike the
+ * rasterize-then-trace path which is bitmap-resolution-bound and gets eaten
+ * by downstream nozzle rounding.
+ *
+ * Returns null if no stroked geometry is found (caller can fall back to the
+ * raster path for truly empty / pictorial inputs).
+ *
+ * @param {string} svgText
+ * @returns {string|null}
+ */
+export function strokesToBlackSvg(svgText) {
+  const data = new SVGLoader().parse(svgText)
+
+  const offsetPolys = []
+  for (const path of data.paths) {
+    const style = path.userData?.style || {}
+    const stroke = style.stroke
+    if (!stroke || stroke === 'none' || stroke === 'transparent') continue
+    const strokeWidth = parseFloat(style.strokeWidth) || 0
+    if (strokeWidth <= 0) continue
+    const halfWidth = strokeWidth / 2
+
+    for (const subPath of path.subPaths) {
+      const pts = subPath.getPoints(DEFAULT_CURVE_DIVISIONS)
+      if (pts.length < 2) continue
+
+      const clip = pts.map((p) => ({
+        X: Math.round(p.x * CLIPPER_SCALE),
+        Y: Math.round(p.y * CLIPPER_SCALE),
+      }))
+
+      const co = new ClipperLib.ClipperOffset(2.0, 0.25)
+      co.AddPath(
+        clip,
+        ClipperLib.JoinType.jtRound,
+        ClipperLib.EndType.etOpenRound
+      )
+      const solution = new ClipperLib.Paths()
+      co.Execute(solution, halfWidth * CLIPPER_SCALE)
+      for (const ring of solution) {
+        if (ring.length >= 3) offsetPolys.push(ring)
+      }
+    }
+  }
+
+  if (offsetPolys.length === 0) return null
+
+  // Union all stroke ribbons so overlapping ones merge cleanly.
+  const clipper = new ClipperLib.Clipper()
+  clipper.AddPaths(offsetPolys, ClipperLib.PolyType.ptSubject, true)
+  const polyTree = new ClipperLib.PolyTree()
+  clipper.Execute(
+    ClipperLib.ClipType.ctUnion,
+    polyTree,
+    ClipperLib.PolyFillType.pftNonZero,
+    ClipperLib.PolyFillType.pftNonZero
+  )
+
+  const polygons = []
+  function walk(node) {
+    if (!node) return
+    const contour = getContour(node)
+    if (!isHole(node) && contour.length >= 3) {
+      const outer = clipperPathToPoints(contour)
+      const holes = []
+      for (const child of getChilds(node)) {
+        const cc = getContour(child)
+        if (isHole(child) && cc.length >= 3) {
+          holes.push(clipperPathToPoints(cc))
+        }
+        for (const gc of getChilds(child)) walk(gc)
+      }
+      polygons.push({ outer, holes })
+    } else {
+      for (const child of getChilds(node)) walk(child)
+    }
+  }
+  for (const child of getChilds(polyTree)) walk(child)
+
+  if (polygons.length === 0) return null
+
+  // Source viewBox so the offset polygons land in the right user-space.
+  const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml')
+  const root = doc.documentElement
+  let viewBox = { x: 0, y: 0, w: 100, h: 100 }
+  const vbAttr = root.getAttribute('viewBox')
+  if (vbAttr) {
+    const parts = vbAttr.trim().split(/[\s,]+/).map(Number)
+    if (parts.length === 4 && parts.every(Number.isFinite)) {
+      viewBox = { x: parts[0], y: parts[1], w: parts[2], h: parts[3] }
+    }
+  } else {
+    const w = parseFloat(root.getAttribute('width') || '0')
+    const h = parseFloat(root.getAttribute('height') || '0')
+    if (w > 0 && h > 0) viewBox = { x: 0, y: 0, w, h }
+  }
+
+  return polygonsToSvg(polygons, viewBox)
+}
+
 /* ---------------- small geometry helpers used by chunk 5 ---------------- */
 
 /**

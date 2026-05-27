@@ -75,6 +75,10 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
   const [warning, setWarning] = useState(null)
   const [stats, setStats] = useState(null)
   const [errorMessage, setErrorMessage] = useState(null)
+  // Track filename separately: <input type="file"> clears its value on every
+  // open() so we'd see "No file chosen" again after re-selecting the same file.
+  // Holding our own copy keeps the label honest.
+  const [selectedFileName, setSelectedFileName] = useState(null)
 
   const reportError = (msg) => {
     setErrorMessage(msg)
@@ -90,8 +94,10 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
   const [coloredSvg, setColoredSvg] = useState(null)
   const [colorList, setColorList] = useState([])
 
-  // manufacturability sliders (in mm)
-  const [nozzleDiameterMm, setNozzleDiameterMm] = useState(0.6)
+  // Manufacturability sliders (mm). Nozzle defaults to 0 so the visualizer
+  // preview shows the uploaded art as-is — the Python tool applies real
+  // nozzle rounding at fab time. Dial it up here to *preview* the impact.
+  const [nozzleDiameterMm, setNozzleDiameterMm] = useState(0)
   const [minIslandAreaMm2, setMinIslandAreaMm2] = useState(0)
   const [minFeatureWidthMm, setMinFeatureWidthMm] = useState(0)
   const [maxLogoDimMm, setMaxLogoDimMm] = useState(100)
@@ -140,6 +146,7 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
     setWarning(null)
     setStats(null)
     setErrorMessage(null)
+    setSelectedFileName(null)
   }
 
   const handleFileUpload = async (e) => {
@@ -148,23 +155,23 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
     if (!file) return
 
     reset()
+    setSelectedFileName(file.name)
     setBusy(true)
     try {
       const isSvg =
         file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')
 
-      const { preprocessRaster, listColors } = await getPreprocessModule()
+      const { preprocessRaster, listColors, strokesToBlackSvg } =
+        await getPreprocessModule()
 
       if (isSvg) {
         const text = await file.text()
-        // Listing colors is cheap. Branch on what the source actually has:
-        //   >1 fills   → user picks which color is the cut (color picker)
-        //   1 fill     → passthrough (already-black single-shape SVG)
-        //   0 fills    → likely stroke-only line art. Rasterize via canvas
-        //                so the browser draws the strokes for us, then feed
-        //                the bitmap through the same raster pipeline JPGs
-        //                use. "Anything in, fab files out" — no user choice
-        //                required for the format conversion.
+        // Branch on what the SVG actually contains:
+        //   >1 fills   → color picker (user picks which is the cut)
+        //   1 fill     → passthrough (already-black SVG)
+        //   0 fills    → try vector stroke-to-fill (lossless, exact source
+        //                stroke widths); if no strokes either, fall back to
+        //                rasterize-then-trace via canvas.
         const colors = listColors(text)
         if (colors.length > 1) {
           setColoredSvg(text)
@@ -173,6 +180,13 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
           return
         }
         if (colors.length === 0) {
+          const strokeSvg = strokesToBlackSvg(text)
+          if (strokeSvg) {
+            setIntermediateSvg(strokeSvg)
+            setStage('ready')
+            return
+          }
+          // No fills, no strokes — rasterize via canvas as last resort.
           const buf = await rasterizeSvgToBytes(text)
           const { svg } = await preprocessRaster(buf, { maxLogoDimMm })
           setIntermediateSvg(svg)
@@ -232,6 +246,9 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
           disabled={busy}
           style={styles.fileInput}
         />
+        {selectedFileName && (
+          <div style={styles.filename}>Selected: {selectedFileName}</div>
+        )}
       </div>
 
       {busy && <div style={styles.info}>Processing…</div>}
@@ -383,6 +400,14 @@ const styles = {
     backgroundColor: '#2a2a2a',
     border: '1px solid #444',
     borderRadius: '4px',
+  },
+  filename: {
+    marginTop: '6px',
+    fontSize: '12px',
+    color: '#9cd0ff',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   slider: {
     width: '100%',
