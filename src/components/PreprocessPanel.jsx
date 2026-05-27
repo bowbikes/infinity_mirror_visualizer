@@ -79,6 +79,9 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
   // open() so we'd see "No file chosen" again after re-selecting the same file.
   // Holding our own copy keeps the label honest.
   const [selectedFileName, setSelectedFileName] = useState(null)
+  // Preview thumbnail is shown by default; users with small viewports or
+  // who've already validated the art can collapse it.
+  const [thumbnailHidden, setThumbnailHidden] = useState(false)
 
   const reportError = (msg) => {
     setErrorMessage(msg)
@@ -198,6 +201,7 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
     setMinIslandOverridden(false)
     setMinFeatureOverridden(false)
     setPickedColors([])
+    setThumbnailHidden(false)
   }
 
   // Advanced manufacturability sliders are collapsed by default. The vast
@@ -380,15 +384,25 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
         <>
           {processedSvg && (
             <div style={styles.thumbnailWrap}>
-              <img
-                src={`data:image/svg+xml;utf8,${encodeURIComponent(processedSvg)}`}
-                alt="Preprocessed artwork preview"
-                style={styles.thumbnail}
-              />
-              <div style={styles.subnote}>
-                This is what the printer cuts — black = material, white =
-                cut away.
+              <div style={styles.thumbnailHeader}>
+                <span style={styles.subnote}>
+                  Preview — black = material, white = cut away.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setThumbnailHidden((v) => !v)}
+                  style={styles.thumbnailToggle}
+                >
+                  {thumbnailHidden ? 'Show' : 'Hide'}
+                </button>
               </div>
+              {!thumbnailHidden && (
+                <img
+                  src={`data:image/svg+xml;utf8,${encodeURIComponent(processedSvg)}`}
+                  alt="Preprocessed artwork preview"
+                  style={styles.thumbnail}
+                />
+              )}
             </div>
           )}
 
@@ -687,6 +701,26 @@ const styles = {
   },
   thumbnailWrap: {
     marginBottom: '12px',
+  },
+  thumbnailHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '8px',
+    marginBottom: '6px',
+  },
+  thumbnailToggle: {
+    padding: '3px 8px',
+    fontSize: '11px',
+    color: '#999',
+    backgroundColor: 'transparent',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: '#444',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    flexShrink: 0,
   },
   thumbnail: {
     width: '100%',

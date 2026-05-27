@@ -399,12 +399,12 @@ export default function ControlsPanel({
           label="Edge Thickness"
           value={edgeThickness}
           defaultValue={defaults.edgeThickness}
-          min={0.05}
+          min={0}
           max={1}
           step={0.05}
           onChange={onEdgeThicknessChange}
           format={(v) => v.toFixed(2)}
-          tooltip="Bevel depth at the icon's outline. Catches the light along the rim — larger values read as a thicker glowing edge."
+          tooltip="Dilates the icon outward — thin lines get thicker, solid shapes get larger. For preset shapes this becomes the ring width. 0 = source art unchanged."
         />
       </div>
 

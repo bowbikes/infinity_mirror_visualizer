@@ -92,7 +92,7 @@ function collectFromPolyTree(node, out) {
  * erosion separates two islands previously connected by a thin neck) and
  * collapse it to nothing (if erosion exceeds the half-width everywhere).
  */
-function offsetPolygons(polygons, delta) {
+export function offsetPolygons(polygons, delta) {
   if (polygons.length === 0) return []
   const co = new ClipperLib.ClipperOffset(
     CLIPPER_MITER_LIMIT,

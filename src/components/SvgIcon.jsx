@@ -3,6 +3,7 @@ import * as THREE from 'three'
 
 import { clipPolygon } from '../utils/svgClip'
 import { parseSvgToPolygons } from '../preprocess/svgParse'
+import { offsetPolygons } from '../preprocess/manufacturability'
 
 // Cache parsed polygons keyed by raw text — each reflection layer renders
 // its own SvgIcon, and without this every layer would re-parse + re-XOR
@@ -87,10 +88,27 @@ function SvgIconImpl({
           y: -(p.y - centerY) * scaleFactor,
         })
 
+        // Move every polygon into scene-space first so the Edge Thickness
+        // offset operates in scene units (matching what users see in the
+        // preview), not source SVG units which can be arbitrary.
+        const sceneSpace = polygons.map((poly) => ({
+          outer: poly.outer.map(xform),
+          holes: poly.holes.map((hole) => hole.map(xform)),
+        }))
+
+        // Edge Thickness for custom SVGs dilates the black areas outward
+        // — thin line art gets thicker, solid shapes get bigger. Matches
+        // the "thicker edges → more material" reading. Uses the same
+        // Clipper-backed offset as the manufacturability pipeline so the
+        // join behavior is consistent.
+        const working =
+          edgeThickness > 0
+            ? offsetPolygons(sceneSpace, edgeThickness / 2)
+            : sceneSpace
+
         const geometries = []
-        for (const poly of polygons) {
-          const outerXf = poly.outer.map(xform)
-          const outerClipped = clipPolygon(outerXf, frameBounds)
+        for (const poly of working) {
+          const outerClipped = clipPolygon(poly.outer, frameBounds)
           if (outerClipped.length < 3) continue
 
           const fillShape = new THREE.Shape()
@@ -101,8 +119,7 @@ function SvgIconImpl({
           fillShape.closePath()
 
           for (const hole of poly.holes) {
-            const holeXf = hole.map(xform)
-            const holeClipped = clipPolygon(holeXf, frameBounds)
+            const holeClipped = clipPolygon(hole, frameBounds)
             if (holeClipped.length < 3) continue
             const holePath = new THREE.Path()
             holeClipped.forEach((p, i) => {

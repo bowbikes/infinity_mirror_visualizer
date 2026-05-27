@@ -24,5 +24,5 @@
 
 export { preprocessRaster } from './raster.js'
 export { listColors, selectByColor } from './colorSelect.js'
-export { applyManufacturability } from './manufacturability.js'
+export { applyManufacturability, offsetPolygons } from './manufacturability.js'
 export { strokesToBlackSvg } from './svgParse.js'
