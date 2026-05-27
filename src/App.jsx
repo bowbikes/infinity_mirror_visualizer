@@ -3,7 +3,7 @@ import { Canvas } from '@react-three/fiber'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import InfinityMirrorScene from './components/InfinityMirrorScene'
 import ControlsPanel from './components/ControlsPanel'
-import PreprocessPanel from './components/PreprocessPanel'
+import CustomArtModal from './components/CustomArtModal'
 import ExportModal from './components/ExportModal'
 import {
   serializeConfiguration,
@@ -108,6 +108,15 @@ function App() {
     _initial('selectedPreset') === 'custom' ? DEFAULTS.shapeType : _initial('selectedPreset')
   )
   const [customSvgPath, setCustomSvgPath] = useState(null)
+  const [customArtFileName, setCustomArtFileName] = useState(null)
+
+  // Custom Art modal: holds the entire upload + manufacturability flow.
+  // Stays mounted after first open so PreprocessPanel state (uploaded
+  // file, slider positions, picked colors) survives close+reopen — the
+  // Edit button picks up where the user left off.
+  const [isCustomArtModalOpen, setIsCustomArtModalOpen] = useState(false)
+  const handleOpenCustomArt = () => setIsCustomArtModalOpen(true)
+  const handleCloseCustomArt = () => setIsCustomArtModalOpen(false)
 
   // Colors
   const [wallColor, setWallColor] = useState(_initial('wallColor'))
@@ -239,6 +248,12 @@ function App() {
     setSelectedPreset(preset)
     if (preset !== 'custom') {
       setShapeType(preset)
+    } else if (!customSvgPath) {
+      // First time picking Custom Upload — open the wizard immediately
+      // so the user isn't staring at an "Upload" button wondering what
+      // to do. If they already have art uploaded, leave the modal closed
+      // and let them open it via the Edit button.
+      handleOpenCustomArt()
     }
   }
 
@@ -394,15 +409,14 @@ function App() {
         </Canvas>
       </div>
 
-      {/* Controls Panel — Custom Art panel only appears when the preset is
-          set to Custom Upload, so there's never both a preset and an
-          unrelated upload box visible at once. */}
+      {/* Controls Panel — when preset is Custom Upload the panel shows
+          a compact summary card (thumbnail + Edit button); the actual
+          upload flow lives in CustomArtModal so the sidebar stays
+          uncluttered. */}
       <ControlsPanel
-        customArtSection={
-          selectedPreset === 'custom'
-            ? <PreprocessPanel onPreprocessed={handlePreprocessed} />
-            : null
-        }
+        customSvgPath={customSvgPath}
+        customArtFileName={customArtFileName}
+        onOpenCustomArt={handleOpenCustomArt}
         selectedPreset={selectedPreset}
         onPresetChange={handlePresetChange}
         wallColor={wallColor}
@@ -439,6 +453,14 @@ function App() {
         defaults={DEFAULTS}
         onResetAll={handleResetAll}
         onCopyShareLink={handleCopyShareLink}
+      />
+
+      {/* Custom Art Modal — wraps the upload + preprocessing flow. */}
+      <CustomArtModal
+        isOpen={isCustomArtModalOpen}
+        onClose={handleCloseCustomArt}
+        onPreprocessed={handlePreprocessed}
+        onFileNameChange={setCustomArtFileName}
       />
 
       {/* Export Modal */}

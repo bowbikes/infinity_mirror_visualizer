@@ -69,7 +69,11 @@ async function rasterizeSvgToBytes(svgText, targetSize = RASTERIZE_TARGET_PX) {
  * applyManufacturability against the cached intermediate. This makes the
  * "what does the printer actually see?" loop instant without re-tracing.
  */
-export default function PreprocessPanel({ onPreprocessed, onError }) {
+export default function PreprocessPanel({
+  onPreprocessed,
+  onError,
+  onFileNameChange,
+}) {
   const [stage, setStage] = useState('idle') // 'idle' | 'picking' | 'ready'
   const [busy, setBusy] = useState(false)
   const [warning, setWarning] = useState(null)
@@ -217,6 +221,7 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
 
     reset()
     setSelectedFileName(file.name)
+    onFileNameChange?.(file.name)
     setBusy(true)
     try {
       const isSvg =
@@ -305,9 +310,7 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
   }
 
   return (
-    <div style={styles.section}>
-      <h3 style={styles.sectionTitle}>Custom Art</h3>
-
+    <div>
       <div style={styles.control}>
         <label style={styles.label}>Upload JPG, PNG, or SVG:</label>
         {/* Custom-styled file input. The native <input type="file"> always

@@ -117,7 +117,9 @@ function HexInput({ value, onChange }) {
 }
 
 export default function ControlsPanel({
-  customArtSection,
+  customSvgPath,
+  customArtFileName,
+  onOpenCustomArt,
   selectedPreset,
   onPresetChange,
   wallColor,
@@ -207,9 +209,47 @@ export default function ControlsPanel({
         </div>
       </div>
 
-      {/* Custom Art preprocessing surface — appears directly below Icon
-          when the user selects Custom Upload, hidden otherwise. */}
-      {customArtSection}
+      {/* Custom Art summary — only when preset is Custom Upload. The
+          actual upload / preprocessing flow lives in CustomArtModal,
+          opened by the Edit / Upload button here so the sidebar stays
+          compact. */}
+      {selectedPreset === 'custom' && (
+        <div style={styles.section}>
+          <h3 style={styles.sectionTitle}>Custom Art</h3>
+          {customSvgPath ? (
+            <div style={styles.customArtSummary}>
+              <img
+                src={`data:image/svg+xml;utf8,${encodeURIComponent(customSvgPath)}`}
+                alt="Custom art preview"
+                style={styles.customArtThumb}
+              />
+              <div style={styles.customArtMeta}>
+                <div
+                  style={styles.customArtFilename}
+                  title={customArtFileName || 'untitled'}
+                >
+                  {customArtFileName || 'Untitled art'}
+                </div>
+                <button
+                  type="button"
+                  onClick={onOpenCustomArt}
+                  style={styles.customArtEditButton}
+                >
+                  Edit
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onOpenCustomArt}
+              style={styles.customArtUploadButton}
+            >
+              Upload custom art…
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Colors */}
       <div style={styles.section}>
@@ -661,6 +701,63 @@ const styles = {
     fontSize: '11px',
     lineHeight: '1.4',
     textAlign: 'center'
+  },
+  customArtSummary: {
+    display: 'flex',
+    gap: '12px',
+    alignItems: 'center',
+  },
+  customArtThumb: {
+    width: '64px',
+    height: '64px',
+    backgroundColor: '#ffffff',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: '#444',
+    borderRadius: '4px',
+    objectFit: 'contain',
+    padding: '4px',
+    boxSizing: 'border-box',
+    flexShrink: 0,
+  },
+  customArtMeta: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    flex: 1,
+    minWidth: 0,
+  },
+  customArtFilename: {
+    fontSize: '12px',
+    color: '#ccc',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  customArtEditButton: {
+    padding: '6px 10px',
+    fontSize: '12px',
+    backgroundColor: '#2a2a2a',
+    color: '#ccc',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: '#555',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    alignSelf: 'flex-start',
+  },
+  customArtUploadButton: {
+    width: '100%',
+    padding: '12px',
+    fontSize: '13px',
+    backgroundColor: '#00ffff',
+    color: '#000',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    fontWeight: 600,
   },
   shareLinkButton: {
     width: '100%',
