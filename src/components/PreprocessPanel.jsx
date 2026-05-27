@@ -190,8 +190,15 @@ export default function PreprocessPanel({ onPreprocessed, onError }) {
       setIntermediateSvg(svg)
       setStage('ready')
     } catch (err) {
-      reportError(err.message)
-      reset()
+      // Clear the half-processed intermediate without nuking the error
+      // message we're about to render (reset() would have cleared it).
+      setStage('idle')
+      setIntermediateSvg(null)
+      setColoredSvg(null)
+      setColorList([])
+      setWarning(null)
+      setStats(null)
+      reportError(err.message || String(err))
     } finally {
       setBusy(false)
     }

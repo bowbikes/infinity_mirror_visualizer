@@ -257,10 +257,14 @@ function App() {
         </div>
       </div>
 
-      {/* Controls Panel — preprocessing section injected at the top */}
+      {/* Controls Panel — Custom Art panel only appears when the preset is
+          set to Custom Upload, so there's never both a preset and an
+          unrelated upload box visible at once. */}
       <ControlsPanel
         topSection={
-          <PreprocessPanel onPreprocessed={handlePreprocessed} />
+          selectedPreset === 'custom'
+            ? <PreprocessPanel onPreprocessed={handlePreprocessed} />
+            : null
         }
         selectedPreset={selectedPreset}
         onPresetChange={handlePresetChange}
