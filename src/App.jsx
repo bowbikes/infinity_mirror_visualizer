@@ -6,6 +6,7 @@ import ControlsPanel from './components/ControlsPanel'
 import CustomArtModal from './components/CustomArtModal'
 import ExportModal from './components/ExportModal'
 import InfoPopover from './components/InfoPopover'
+import OrbitHint from './components/OrbitHint'
 import './components/ControlsLayout.css'
 import {
   serializeConfiguration,
@@ -491,6 +492,10 @@ function App() {
           )}
         </Canvas>
       </div>
+
+      {/* "Drag to orbit" nudge — bottom-center over the canvas. Hidden
+          while a modal is open so it doesn't float over the dialog. */}
+      {!isCustomArtModalOpen && !isExportModalOpen && <OrbitHint />}
 
       {/* About card / Layered Logic brand corner. Auto-dismisses to a
           small ⓘ button after the user closes it (sticky via

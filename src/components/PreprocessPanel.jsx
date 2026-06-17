@@ -338,6 +338,13 @@ export default function PreprocessPanel({
             style={styles.hiddenInput}
           />
         </label>
+        <div style={styles.note}>
+          <strong style={{ color: '#bbb' }}>What vectorizes best:</strong> bold,
+          high-contrast black-and-white art — solid silhouettes, thick line art,
+          simple logos. Photos, gradients, soft shadows, fine detail, and
+          hairline strokes don't trace cleanly and may come back broken or
+          speckled. A vector SVG with solid fills gives the sharpest cut.
+        </div>
       </div>
 
       {busy && <div style={styles.info}>Processing…</div>}

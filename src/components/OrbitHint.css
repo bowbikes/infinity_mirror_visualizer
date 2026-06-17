@@ -1,0 +1,83 @@
+/*
+ * OrbitHint — "you can spin this" nudge pinned to the bottom-center of the
+ * canvas. Italic-default mono to match the Layered Logic brand cards.
+ * pointer-events: none so the hint never intercepts the drag it invites.
+ */
+
+.orbit-hint {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - 32px);
+  padding: 9px 16px;
+  background-color: rgba(26, 26, 26, 0.88);
+  color: #f0f0f0;
+  border: 1px solid #444;
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  font-family: 'Berkeley Mono', ui-monospace, 'SF Mono', Menlo, Consolas,
+    monospace;
+  font-style: italic;
+  font-size: 13px;
+  line-height: 1.3;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  animation: orbit-hint-pulse 2.8s ease-in-out infinite;
+}
+
+.orbit-hint--hidden {
+  opacity: 0;
+  transform: translateX(-50%) translateY(8px);
+  animation: none;
+}
+
+.orbit-hint__icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  color: #00ffff;
+}
+
+.orbit-hint__text {
+  white-space: nowrap;
+}
+
+.orbit-hint__text em {
+  color: #00ffff;
+  font-style: italic;
+}
+
+/* Gentle breathing glow so the chip reads as a live invitation, not chrome. */
+@keyframes orbit-hint-pulse {
+  0%, 100% {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  }
+  50% {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45),
+      0 0 16px rgba(0, 255, 255, 0.25);
+  }
+}
+
+@media (max-width: 640px) {
+  .orbit-hint {
+    font-size: 11px;
+    padding: 8px 13px;
+    gap: 8px;
+  }
+  .orbit-hint__text {
+    white-space: normal;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit-hint {
+    animation: none;
+  }
+}
