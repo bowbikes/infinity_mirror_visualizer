@@ -34,7 +34,7 @@ describe('parseSvgToPolygons', () => {
   })
 
   it('parses nested_holes: 2 islands per evenodd parity (disc+hole + inner disc)', () => {
-    // Python's `load_cut_polygon` returns 2 islands AND normalizes to mm — its
+    // Python's `load_cut_polygon` returns 2 islands AND normalizes to mm: its
     // reported areas (4786 / 491) are post-scale. The JS port deliberately
     // stays in source SVG coords so the parity tests can compare structure
     // without normalization noise; the visualizer's 3D scene normalizes

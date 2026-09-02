@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 /**
- * PresetsSection — name-able localStorage-backed configuration snapshots.
+ * PresetsSection, name-able localStorage-backed configuration snapshots.
  *
  * Builds on the URL-hash share mechanism: the "config" passed in/out is
  * the same SHARED_KEYS subset that #cfg= encodes. So a saved preset is
@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react'
  * current config, prompts for a name. Load → applies one back via the
  * parent's applyConfig callback. Delete → removes from the list.
  *
- * Custom-art SVGs are NOT included (same reason as the share link —
+ * Custom-art SVGs are NOT included (same reason as the share link, 
  * they can be huge and re-upload is fast).
  */
 const STORAGE_KEY = 'imv:presets'
@@ -37,13 +37,13 @@ function persistStored(presets) {
 
 export default function PresetsSection({ currentConfig, onApplyConfig }) {
   const [presets, setPresets] = useState(loadStored)
-  // 'idle' | 'naming' — when naming, the input box is shown instead of
+  // 'idle' | 'naming', when naming, the input box is shown instead of
   // the Save button. Lets us avoid window.prompt (which is jarring,
   // strips formatting, blocks the page).
   const [stage, setStage] = useState('idle')
   const [draftName, setDraftName] = useState('')
 
-  // Resync from storage on focus — if the user has the app open in two
+  // Resync from storage on focus, if the user has the app open in two
   // tabs and saves in one, the other tab sees the new preset next time
   // they tab back. Cheap, fires rarely.
   useEffect(() => {

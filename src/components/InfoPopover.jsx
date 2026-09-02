@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import './InfoPopover.css'
 
 /**
- * InfoPopover — top-left "what is this" card.
+ * InfoPopover, top-left "what is this" card.
  *
  * Shown by default on first visit. Once the user closes it, the
  * dismissal sticks via localStorage and a small ⓘ button takes its
@@ -76,18 +76,18 @@ export default function InfoPopover() {
       </p>
       <ul className="info-howto">
         <li>
-          <strong>Icon</strong> — pick a preset or <em>Custom Upload</em>{' '}
+          <strong>Icon</strong>, pick a preset or <em>Custom Upload</em>{' '}
           to bring in your own art.
         </li>
         <li>
-          <strong>Colors</strong> — set the light hue and overall intensity.
+          <strong>Colors</strong>, set the light hue and overall intensity.
         </li>
         <li>
-          <strong>Frame</strong> — width, height, depth, and reflection
+          <strong>Frame</strong>, width, height, depth, and reflection
           layers.
         </li>
         <li>
-          <strong>Export</strong> — download the config bundle or copy a
+          <strong>Export</strong>, download the config bundle or copy a
           shareable URL.
         </li>
       </ul>
@@ -101,7 +101,7 @@ export default function InfoPopover() {
         >
           Layered Logic
         </a>
-        <span className="info-tagline"> — light that layers.</span>
+        <span className="info-tagline"> · light that layers.</span>
       </div>
     </div>
   )

@@ -93,9 +93,9 @@ export default function InfinityMirrorBox({
         />
       </mesh>
 
-      {/* No back wall — the frame is a portal into the reflection stack. */}
+      {/* No back wall, the frame is a portal into the reflection stack. */}
 
-      {/* Icon and reflection layers — first layer sits in the middle of the frame. */}
+      {/* Icon and reflection layers, first layer sits in the middle of the frame. */}
       <ReflectionLayers
         shapeType={shapeType}
         customSvgPath={customSvgPath}

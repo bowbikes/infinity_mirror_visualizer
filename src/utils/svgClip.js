@@ -1,5 +1,5 @@
 /**
- * SVG-to-3D clipping helpers — used by SvgIcon to keep icon geometry
+ * SVG-to-3D clipping helpers, used by SvgIcon to keep icon geometry
  * inside the mirror's frame opening.
  *
  * Both algorithms operate on bounds = [width, height], centered at the
@@ -69,7 +69,7 @@ export function clipLineSegment(p1, p2, bounds) {
 
 /**
  * Sutherland-Hodgman polygon clipping. Returns the clipped polygon
- * point list (possibly empty). Operates on a closed polygon — points
+ * point list (possibly empty). Operates on a closed polygon, points
  * connect cyclically.
  */
 export function clipPolygon(points, bounds) {

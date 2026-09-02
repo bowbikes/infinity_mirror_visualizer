@@ -7,7 +7,7 @@ import SvgIcon from './SvgIcon'
  * saturation to fake the infinity-mirror recursive-reflection look.
  *
  * Layer i sits at zOffset = -i * spacing, dimmed by 0.75^i and slightly
- * desaturated. The first layer (i=0) is the only emissive one — emissive
+ * desaturated. The first layer (i=0) is the only emissive one, emissive
  * intensity is gated by layerIndex inside SvgIcon.
  */
 // Pre-allocated scratch so we don't churn THREE.Color instances on each
@@ -34,7 +34,7 @@ export default function ReflectionLayers({
 
   const layers = useMemo(() => {
     // Resolve the base color once. The HSL components don't change between
-    // layers — only the lightness and saturation scalars do.
+    // layers, only the lightness and saturation scalars do.
     _scratchColor.set(color).getHSL(_scratchHsl)
     const baseH = _scratchHsl.h
     const baseS = _scratchHsl.s

@@ -2,12 +2,12 @@ import JSZip from 'jszip';
 
 /**
  * Plain SHA-256 hash of the serialized config. This is an *integrity*
- * checksum — it catches accidental corruption in transit, not tampering.
+ * checksum, it catches accidental corruption in transit, not tampering.
  *
  * (Real tamper protection requires a signature with a private key that
  * never reaches the client. An earlier version of this file used a
  * hardcoded secret baked into the bundle, which provided no actual
- * protection — anyone with the JS could re-sign anything. Removed.)
+ * protection, anyone with the JS could re-sign anything. Removed.)
  */
 async function computeIntegrityHash(data) {
   const encoder = new TextEncoder();
@@ -63,7 +63,7 @@ const CUSTOM_SVG_FILENAME = 'custom-icon.svg';
 
 /**
  * Serializes the complete scene configuration. The custom SVG (which can
- * be many KB) is *not* embedded in the JSON — it's written as a sibling
+ * be many KB) is *not* embedded in the JSON, it's written as a sibling
  * file in the export ZIP and referenced by filename here.
  */
 export function serializeConfiguration(state) {
@@ -109,7 +109,7 @@ export function serializeConfiguration(state) {
 
 /**
  * Creates a ZIP with the configuration JSON, snapshot, custom SVG (if any),
- * and a README. The integrity hash inside the JSON covers the JSON only —
+ * and a README. The integrity hash inside the JSON covers the JSON only, 
  * not a tamper-proof signature, just a checksum to catch corruption.
  */
 export async function createExportZip(config, snapshotBlob, customerInfo = {}, customSvgPath = null) {
@@ -160,7 +160,7 @@ Files Included:
 - ${CUSTOM_SVG_FILENAME}       User-uploaded custom SVG icon` : ''}
 
 The integrity checksum (SHA-256 of the config JSON) detects accidental
-corruption in transit. It is NOT a tamper-proof signature — a modified
+corruption in transit. It is NOT a tamper-proof signature, a modified
 config can be re-hashed by anyone. For tamper protection, sign the ZIP
 file with the manufacturer's PGP key out-of-band.
 `
@@ -221,7 +221,7 @@ export async function validateImportedConfig(zipBlob) {
     const hash = exportData.integrityHash || exportData.signature; // back-compat for v1.0
     const ok = await verifyIntegrityHash(exportData.config, hash);
     if (!ok) {
-      return { valid: false, error: 'Integrity check failed — file may be corrupted' };
+      return { valid: false, error: 'Integrity check failed: file may be corrupted' };
     }
 
     let customSvgPath = null;

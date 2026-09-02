@@ -63,7 +63,7 @@ describe('applyManufacturability', () => {
       expect(droppedThin).toBe(1)
       const { polygons } = parseSvgToPolygons(svg)
       expect(polygons).toHaveLength(1)
-      // What's left is the 50x50 square — area ~2500 SVG-u².
+      // What's left is the 50x50 square: area ~2500 SVG-u².
       expect(polygonArea(polygons[0])).toBeGreaterThan(2400)
       expect(polygonArea(polygons[0])).toBeLessThan(2600)
     })
@@ -111,10 +111,10 @@ describe('applyManufacturability', () => {
   describe('threshold composition', () => {
     it('applies nozzle round, then width floor, then area floor in order', () => {
       // tiny_specks has 5 islands (1 large, 4 tiny). Set all three filters:
-      //   nozzleDiameterMm: 0.5  — small rounding, doesn't destroy anything
-      //   minFeatureWidthMm: 1   — 2 SVG-u threshold; the 2x2 specks survive
+      //   nozzleDiameterMm: 0.5, small rounding, doesn't destroy anything
+      //   minFeatureWidthMm: 1, 2 SVG-u threshold; the 2x2 specks survive
       //                            erosion by 1, so width floor drops nothing
-      //   minIslandAreaMm2: 50   — 200 SVG-u² threshold; drops the 4-area specks
+      //   minIslandAreaMm2: 50, 200 SVG-u² threshold; drops the 4-area specks
       const { droppedThin, droppedSmall } = applyManufacturability(
         loadFixture('tiny_specks.svg'),
         {

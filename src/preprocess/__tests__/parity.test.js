@@ -1,18 +1,18 @@
 /**
- * Parity tests — the JS preprocessor port must produce black SVGs that
+ * Parity tests, the JS preprocessor port must produce black SVGs that
  * match the Python `IM_SVG_Maker` tool's canonical outputs within tolerance.
  *
  * Fixtures live in ./fixtures/ and are synced from IM_SVG_Maker via
  * `npm run sync-fixtures` (no submodule).
  *
  * Comparison metrics (per the integration plan):
- *   1. Island count — exact
- *   2. Total polygon area — within 2%
- *   3. Union bbox — within 0.5mm on each side
- *   4. Symmetric difference area — within 5% (defers until chunk 5; polygon ops
+ *   1. Island count, exact
+ *   2. Total polygon area, within 2%
+ *   3. Union bbox, within 0.5mm on each side
+ *   4. Symmetric difference area, within 5% (defers until chunk 5; polygon ops
  *      not available until clipper-lib lands as a real dep + the modules port)
  *
- * STATUS: chunk 1 — all currently-stubbed paths fail. Each chunk turns a
+ * STATUS: chunk 1, all currently-stubbed paths fail. Each chunk turns a
  * subset green.
  */
 import { describe, it, expect, beforeAll } from 'vitest'
@@ -58,7 +58,7 @@ const FIXTURES_CATALOG = [
  *
  * These use plain DOMParser + numeric bbox extraction so the parity check
  * runs in chunk 1 without depending on Clipper.js / polygon-clipping. They
- * undercount islands when one <path> covers multiple disjoint shapes — fine
+ * undercount islands when one <path> covers multiple disjoint shapes: fine
  * for the red baseline, refined in chunk 3 when svg_parse lands.
  * --------------------------------------------------------------- */
 
@@ -83,7 +83,7 @@ function viewBox(svgString) {
  * Bbox area of a path d-string from endpoint coords only.
  *
  * Walks each segment via svgpath's iterator after normalizing to absolute
- * commands. Curve control points are deliberately excluded — they convex-
+ * commands. Curve control points are deliberately excluded, they convex-
  * hull-bound the path and would lie about extent. Endpoint-only gives a
  * tight, consistent bbox for parity comparison.
  *
@@ -210,7 +210,7 @@ async function runPipeline(fx) {
   if (fx.pipeline === 'raster') {
     // jsdom's Blob is incomplete (no arrayBuffer/stream methods), so pass
     // raw bytes directly. In the browser the visualizer UI will hand off
-    // either a File or an ArrayBuffer (from FileReader) — both go through
+    // either a File or an ArrayBuffer (from FileReader), both go through
     // the same toBuffer path in preprocessRaster.
     const bytes = new Uint8Array(readFileSync(inputPath))
     const { svg } = await preprocessRaster(bytes, fx.opts || {})
@@ -261,7 +261,7 @@ describe('preprocessor parity vs IM_SVG_Maker canonicals', () => {
         const a = summarize(actual)
         const e = summarize(expected)
         if (e.totalApproxArea === 0) {
-          // Empty canonical — actual must also be ~empty
+          // Empty canonical, actual must also be ~empty
           expect(a.totalApproxArea).toBeLessThan(1)
           return
         }

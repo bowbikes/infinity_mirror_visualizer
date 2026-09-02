@@ -7,7 +7,7 @@
  * over the canvas to toggle it.
  *
  * Internal styles of ControlsPanel (sliders, sections, etc.) are still
- * inline JS styles — this file only manages where the panel sits and
+ * inline JS styles, this file only manages where the panel sits and
  * how it appears at narrow widths.
  */
 

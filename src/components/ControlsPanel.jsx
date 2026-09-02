@@ -1,5 +1,5 @@
 /**
- * ControlsPanel — visualizer customization controls.
+ * ControlsPanel, visualizer customization controls.
  *
  * Custom art upload + preprocessing live in the `topSection` (PreprocessPanel)
  * injected from App.jsx. This panel only renders the preset picker, colors,
@@ -11,7 +11,7 @@ import PresetsSection from './PresetsSection'
 
 /**
  * Slider + numeric input pair with a tooltip indicator. Double-clicking the
- * label resets the value to `defaultValue` — saves users who slid something
+ * label resets the value to `defaultValue`, saves users who slid something
  * to an extreme and want the starting point back. Numeric input mirrors the
  * slider; both clamp to [min, max] on blur.
  */
@@ -72,7 +72,7 @@ function SliderControl({
 
 /**
  * Hex color text input with validation: while typing the value is held in
- * local state; on blur (or Enter) it's parsed — valid 3- or 6-digit hex
+ * local state; on blur (or Enter) it's parsed: valid 3- or 6-digit hex
  * commits upstream, anything else reverts and flashes a red border.
  */
 function HexInput({ value, onChange }) {
@@ -220,7 +220,7 @@ export default function ControlsPanel({
         </div>
       </div>
 
-      {/* Custom Art summary — only when preset is Custom Upload. The
+      {/* Custom Art summary, only when preset is Custom Upload. The
           actual upload / preprocessing flow lives in CustomArtModal,
           opened by the Edit / Upload button here so the sidebar stays
           compact. */}
@@ -486,7 +486,7 @@ export default function ControlsPanel({
           step={0.01}
           onChange={onEdgeThicknessChange}
           format={(v) => v.toFixed(2)}
-          tooltip="Dilates the icon outward — thin lines get thicker, solid shapes get larger. Scales with the Scale slider (the cut lines on a bigger printed icon are physically thicker). 0 = source art unchanged."
+          tooltip="Dilates the icon outward: thin lines get thicker, solid shapes get larger. Scales with the Scale slider (the cut lines on a bigger printed icon are physically thicker). 0 = source art unchanged."
         />
       </div>
 

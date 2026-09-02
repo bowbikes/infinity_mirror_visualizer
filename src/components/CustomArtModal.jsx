@@ -4,17 +4,17 @@ import PreprocessPanel from './PreprocessPanel'
 import './ExportModal.css'
 
 /**
- * CustomArtModal — wizard wrapper around PreprocessPanel.
+ * CustomArtModal, wizard wrapper around PreprocessPanel.
  *
  * The actual upload / color-pick / manufacturability state machine lives
  * inside PreprocessPanel. This component just gives it a larger surface
  * (a modal) so the sidebar can stay compact.
  *
  * The modal mounts once on first open and then stays mounted (hidden via
- * CSS) so PreprocessPanel state — uploaded file, picked colors, slider
- * positions — persists across closes. Hit Edit again and you're back
+ * CSS) so PreprocessPanel state, uploaded file, picked colors, slider
+ * positions, persists across closes. Hit Edit again and you're back
  * where you left off without re-uploading. Every change in the modal is
- * live (no Cancel — use the Replace flow to start over).
+ * live (no Cancel, use the Replace flow to start over).
  */
 export default function CustomArtModal({
   isOpen,

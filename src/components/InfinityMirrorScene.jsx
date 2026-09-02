@@ -37,7 +37,7 @@ export default function InfinityMirrorScene({
   const wallPadding = 25 // units of padding around the frame
   const wallSegmentSize = 70 // size of wall segments beyond the frame
 
-  // Auto-orbit — smooth rotation around the Z axis at one full turn / 10s.
+  // Auto-orbit, smooth rotation around the Z axis at one full turn / 10s.
   useFrame((state, delta) => {
     if (!autoOrbit || !orbitControlsRef.current) {
       // Snap the accumulator back to zero exactly once when orbit stops, so

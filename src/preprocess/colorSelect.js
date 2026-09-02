@@ -162,7 +162,7 @@ function resolveFill(el) {
   // missing fills to black, BUT for pipeline routing we want to distinguish
   // "explicitly filled" from "merely defaulted." A path with only a stroke
   // declared via a <style> CSS class (e.g. snowflake's .cls-1) hits this
-  // branch — returning null lets PreprocessPanel route it to the vector
+  // branch, returning null lets PreprocessPanel route it to the vector
   // stroke-to-fill path instead of treating it as a filled shape.
   return null
 }
@@ -174,7 +174,7 @@ function resolveFill(el) {
  * Math: when a path is wrapped as <g A><g B><path C/>, the effective transform
  * on the path's coords is A·B·C. SVG transform-list semantics apply transforms
  * right-to-left (innermost first), so the string "A B C" applies C first, then
- * B, then A — exactly the hierarchy we want. Walking leaf→root collects
+ * B, then A, exactly the hierarchy we want. Walking leaf→root collects
  * [C, B, A]; reversing gives ["A", "B", "C"]; joining yields "A B C".
  *
  * Avoids DOMMatrix because jsdom doesn't ship it. svgpath parses SVG-spec
@@ -241,7 +241,7 @@ function elementToD(el) {
   if (tag === 'ellipse') return ellipseToD(el)
   if (tag === 'polygon') return polyPointsToD(el.getAttribute('points'), true)
   if (tag === 'polyline') return polyPointsToD(el.getAttribute('points'), false)
-  // <line> stroke-only by default — skip; it's never a filled region.
+  // <line> stroke-only by default: skip; it's never a filled region.
   return ''
 }
 

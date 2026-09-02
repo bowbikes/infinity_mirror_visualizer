@@ -52,7 +52,7 @@ async function rasterizeSvgToBytes(svgText, targetSize = RASTERIZE_TARGET_PX) {
 }
 
 /**
- * PreprocessPanel — accepts a JPG/PNG/SVG, walks the user through whatever
+ * PreprocessPanel, accepts a JPG/PNG/SVG, walks the user through whatever
  * preprocessing the input needs (raster trace + manufacturability for JPGs,
  * color-pick + manufacturability for multi-fill SVGs, manufacturability-only
  * for already-black SVGs), and hands the resulting black SVG to the parent
@@ -103,7 +103,7 @@ export default function PreprocessPanel({
 
   // intermediate cached BLACK SVG (after raster trace or color-pick, before
   // manufacturability). Re-running applyManufacturability with new sliders
-  // operates on this — no re-trace needed.
+  // operates on this, no re-trace needed.
   const [intermediateSvg, setIntermediateSvg] = useState(null)
 
   // multi-color SVG state: original SVG text + the list of distinct fills.
@@ -111,7 +111,7 @@ export default function PreprocessPanel({
   const [colorList, setColorList] = useState([])
 
   // Nozzle diameters the printer can actually swap to. Continuous values
-  // would imply we support arbitrary nozzles, which we don't — pick from
+  // would imply we support arbitrary nozzles, which we don't: pick from
   // the stocked set. 0 = "don't apply nozzle rounding at all" (preview only).
   const NOZZLE_OPTIONS = [0, 0.25, 0.4, 0.6, 0.8, 1.0]
   const DEFAULT_NOZZLE = 0.6
@@ -127,7 +127,7 @@ export default function PreprocessPanel({
 
   // Visualizer-internal: maxLogoDim only affects the unit conversion for
   // the manufacturability thresholds, not anything visible in the 3D
-  // preview. Hard-coded to the previous slider default — users with a
+  // preview. Hard-coded to the previous slider default, users with a
   // strong opinion about absolute mm thresholds can adjust min-island /
   // min-feature directly.
   const MAX_LOGO_DIM_MM = 100
@@ -150,7 +150,7 @@ export default function PreprocessPanel({
     if (!minFeatureOverridden) setMinFeatureWidthMm(minFeatureFromNozzle(d))
   }
 
-  // Most recent post-manufacturability SVG — rendered as an inline
+  // Most recent post-manufacturability SVG, rendered as an inline
   // thumbnail so the user can see what the printer sees without having
   // to look at the 3D canvas. Kept in addition to onPreprocessed (which
   // also receives the SVG) so the thumbnail lives inside this component.
@@ -218,7 +218,7 @@ export default function PreprocessPanel({
   }
 
   // Advanced manufacturability sliders are collapsed by default. The vast
-  // majority of users want "upload → done" — they only need to crack open
+  // majority of users want "upload → done", they only need to crack open
   // the tuners when the dropped-feature stats or the rendered preview
   // signal that defaults aren't working for their art.
   const [advancedOpen, setAdvancedOpen] = useState(false)
@@ -261,7 +261,7 @@ export default function PreprocessPanel({
             setStage('ready')
             return
           }
-          // No fills, no strokes — rasterize via canvas as last resort.
+          // No fills, no strokes, rasterize via canvas as last resort.
           const buf = await rasterizeSvgToBytes(text)
           const { svg } = await preprocessRaster(buf, { maxLogoDimMm: MAX_LOGO_DIM_MM })
           setIntermediateSvg(svg)
@@ -340,7 +340,7 @@ export default function PreprocessPanel({
         </label>
         <div style={styles.note}>
           <strong style={{ color: '#bbb' }}>What vectorizes best:</strong> bold,
-          high-contrast black-and-white art — solid silhouettes, thick line art,
+          high-contrast black-and-white art, solid silhouettes, thick line art,
           simple logos. Photos, gradients, soft shadows, fine detail, and
           hairline strokes don't trace cleanly and may come back broken or
           speckled. A vector SVG with solid fills gives the sharpest cut.
@@ -368,7 +368,7 @@ export default function PreprocessPanel({
                     backgroundColor: c.hex,
                     ...(picked ? styles.swatchPicked : null),
                   }}
-                  title={`${c.hex} — ${c.nPaths} path(s)`}
+                  title={`${c.hex}: ${c.nPaths} path(s)`}
                 >
                   {picked ? '✓' : ''}
                 </button>
@@ -405,7 +405,7 @@ export default function PreprocessPanel({
             <div style={styles.thumbnailWrap}>
               <div style={styles.thumbnailHeader}>
                 <span style={styles.subnote}>
-                  Preview — black = illuminated segments, white = mirror base.
+                  Preview, black = illuminated segments, white = mirror base.
                 </span>
                 <button
                   type="button"
@@ -498,7 +498,7 @@ export default function PreprocessPanel({
                   style={styles.slider}
                 />
                 <div style={styles.subnote}>
-                  Drops islands smaller than this — kills speckles from JPG traces.
+                  Drops islands smaller than this, kills speckles from JPG traces.
                 </div>
                 {minIslandAreaMm2 === 0 && (
                   <div style={styles.previewMismatchWarn}>
@@ -525,7 +525,7 @@ export default function PreprocessPanel({
                   style={styles.slider}
                 />
                 <div style={styles.subnote}>
-                  Drops islands whose narrowest part is below this — kills hairlines
+                  Drops islands whose narrowest part is below this, kills hairlines
                   the printer can't make as walls.
                 </div>
                 {minFeatureWidthMm === 0 && (

@@ -12,13 +12,13 @@
  *     vector trace. It internally re-thresholds the bitmap; the dilation we
  *     did upstream just thickens the eventual traced outline.
  *   - Potrace emits SVG with a single `<path>` containing many subpaths. We
- *     parse it via svgParse — which routes the subpaths through clipper-lib's
- *     pftEvenOdd XOR — to get properly-nested polygons (outer + holes).
+ *     parse it via svgParse, which routes the subpaths through clipper-lib's
+ *     pftEvenOdd XOR, to get properly-nested polygons (outer + holes).
  *   - polygonsToSvg re-emits one `<path>` per island in the format that
  *     matches Python's fox.canonical.svg writer.
  *
  * Size-floor filters (`min_island_area_mm2`, `min_feature_width_mm`) live in
- * chunk 5's manufacturability module — chunk 4 is only the trace.
+ * chunk 5's manufacturability module: chunk 4 is only the trace.
  */
 import Jimp from 'jimp'
 import potrace from 'potrace'
@@ -125,7 +125,7 @@ export async function preprocessRaster(input, opts = {}) {
   const h = image.bitmap.height
 
   // Mirror raster.py's threshold convention: dark pixels < threshold become
-  // foreground (black). Jimp's `.threshold({max})` does exactly this — pixels
+  // foreground (black). Jimp's `.threshold({max})` does exactly this: pixels
   // at or below `max` become black, above become white.
   image.greyscale()
   image.threshold({ max: threshold })

@@ -33,7 +33,7 @@ const SHAPE_PRESETS = ['hexagon', 'circle', 'star']
 
 // Hash-encoded config keys, in order. Adding a new field to share via URL?
 // Append it here and add the corresponding setter to applyHashConfig. The
-// custom-art SVG is intentionally NOT shareable — it can be megabytes and
+// custom-art SVG is intentionally NOT shareable, it can be megabytes and
 // the user re-uploads it per session.
 const SHARED_KEYS = [
   'selectedPreset',
@@ -59,7 +59,7 @@ const HASH_PREFIX = '#cfg='
 function encodeConfig(state) {
   const subset = {}
   for (const k of SHARED_KEYS) subset[k] = state[k]
-  // btoa is fine for our ASCII JSON — no Unicode in any of these values.
+  // btoa is fine for our ASCII JSON, no Unicode in any of these values.
   return btoa(JSON.stringify(subset))
 }
 function decodeConfigFromHash() {
@@ -122,7 +122,7 @@ function App() {
 
   // Custom Art modal: holds the entire upload + manufacturability flow.
   // Stays mounted after first open so PreprocessPanel state (uploaded
-  // file, slider positions, picked colors) survives close+reopen — the
+  // file, slider positions, picked colors) survives close+reopen, the
   // Edit button picks up where the user left off.
   const [isCustomArtModalOpen, setIsCustomArtModalOpen] = useState(false)
   const handleOpenCustomArt = () => setIsCustomArtModalOpen(true)
@@ -130,7 +130,7 @@ function App() {
 
   // Apply a serialized config (from a saved preset, the URL hash, or
   // any future source). Mirrors the lazy useState initializer above but
-  // imperatively — we set every field that's present in the incoming
+  // imperatively, we set every field that's present in the incoming
   // cfg so partial blobs still apply cleanly.
   const handleApplyConfig = (cfg) => {
     if (!cfg) return
@@ -215,7 +215,7 @@ function App() {
   )
 
   // Reset every control back to its DEFAULTS value. Deliberately leaves
-  // customSvgPath alone — losing a hard-won upload to an accidental click
+  // customSvgPath alone, losing a hard-won upload to an accidental click
   // would be worse than the inconsistency.
   const handleResetAll = () => {
     setWallColor(DEFAULTS.wallColor)
@@ -319,7 +319,7 @@ function App() {
     if (preset !== 'custom') {
       setShapeType(preset)
     } else if (!customSvgPath) {
-      // First time picking Custom Upload — open the wizard immediately
+      // First time picking Custom Upload, open the wizard immediately
       // so the user isn't staring at an "Upload" button wondering what
       // to do. If they already have art uploaded, leave the modal closed
       // and let them open it via the Edit button.
@@ -408,7 +408,7 @@ function App() {
       const zipBlob = await createExportZip(config, snapshot, customerInfo, customSvgPath)
 
       // Manufacturer endpoint comes from build-time env (VITE_MANUFACTURER_ENDPOINT).
-      // When not set, the Send-to-Manufacturer button is hidden in ExportModal —
+      // When not set, the Send-to-Manufacturer button is hidden in ExportModal, 
       // this branch only runs if the env was present at build time.
       const manufacturerEndpoint = import.meta.env.VITE_MANUFACTURER_ENDPOINT
       if (!manufacturerEndpoint) {
@@ -446,7 +446,7 @@ function App() {
           // Pause continuous rendering while the Custom Art modal is
           // open. Three.js was eating enough main-thread time that the
           // OS file picker would lag noticeably after clicking Choose
-          // file — freezing the scene during upload lets the dialog
+          // file, freezing the scene during upload lets the dialog
           // open instantly. Scene resumes on modal close.
           frameloop={isCustomArtModalOpen ? 'never' : 'always'}
           gl={{
@@ -456,7 +456,7 @@ function App() {
             // Lets us read canvas pixels for the emission-uniformity
             // measurement script and for ExportModal's snapshot capture.
             // Tiny perf cost (the framebuffer can't be discarded between
-            // composites) — acceptable.
+            // composites), acceptable.
             preserveDrawingBuffer: true,
           }}
         >
@@ -493,7 +493,7 @@ function App() {
         </Canvas>
       </div>
 
-      {/* "Drag to orbit" nudge — bottom-center over the canvas. Hidden
+      {/* "Drag to orbit" nudge: bottom-center over the canvas. Hidden
           while a modal is open so it doesn't float over the dialog. */}
       {!isCustomArtModalOpen && !isExportModalOpen && <OrbitHint />}
 
@@ -502,7 +502,7 @@ function App() {
           localStorage). */}
       <InfoPopover />
 
-      {/* Mobile drawer toggle — only visible at narrow widths via CSS. */}
+      {/* Mobile drawer toggle, only visible at narrow widths via CSS. */}
       <button
         type="button"
         className="drawer-toggle"
@@ -526,13 +526,13 @@ function App() {
         </svg>
       </button>
 
-      {/* Scrim — only visible at narrow widths when drawer is open. */}
+      {/* Scrim, only visible at narrow widths when drawer is open. */}
       <div
         className={`drawer-scrim ${drawerOpen ? 'open' : ''}`}
         onClick={() => setDrawerOpen(false)}
       />
 
-      {/* Controls Panel — when preset is Custom Upload the panel shows
+      {/* Controls Panel, when preset is Custom Upload the panel shows
           a compact summary card (thumbnail + Edit button); the actual
           upload flow lives in CustomArtModal so the sidebar stays
           uncluttered. The .controls-aside wrapper handles the
@@ -585,7 +585,7 @@ function App() {
       />
       </aside>
 
-      {/* Custom Art Modal — wraps the upload + preprocessing flow. */}
+      {/* Custom Art Modal, wraps the upload + preprocessing flow. */}
       <CustomArtModal
         isOpen={isCustomArtModalOpen}
         onClose={handleCloseCustomArt}

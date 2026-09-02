@@ -8,7 +8,7 @@
  *     syntax we'd otherwise have to write ourselves.
  *   - `clipper-lib` does the actual XOR via Clipper's `pftEvenOdd` poly-fill
  *     type. Three.js's `path.toShapes(false)` uses winding-direction heuristics
- *     rather than pure evenodd, which diverges from Python on nested holes —
+ *     rather than pure evenodd, which diverges from Python on nested holes, 
  *     we want byte-faithful parity with the Python pipeline, so we do the
  *     XOR ourselves and ignore three.js's `toShapes` here.
  *
@@ -73,7 +73,7 @@ function getContour(node) {
 /**
  * Walk a PolyTree, emitting `{outer, holes}` polygons. Recurses through
  * `child.Childs` so islands nested inside holes (the inner-disc case in
- * nested_holes.svg) come out as their own top-level polygons — matches
+ * nested_holes.svg) come out as their own top-level polygons, matches
  * Python's `MultiPolygon.geoms` semantics exactly.
  */
 function collectPolygonsFromPolyTree(node, polygons) {
@@ -225,7 +225,7 @@ export function polygonsToSvg(polygons, viewBox) {
 /**
  * Walk every stroked path in an SVG, offset each polyline by stroke-width/2
  * via Clipper, union the results, and emit a flat black-fill SVG. Lossless
- * conversion that preserves the source stroke widths exactly — unlike the
+ * conversion that preserves the source stroke widths exactly, unlike the
  * rasterize-then-trace path which is bitmap-resolution-bound and gets eaten
  * by downstream nozzle rounding.
  *

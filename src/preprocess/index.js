@@ -1,5 +1,5 @@
 /**
- * Preprocessing pipeline — port of the IM_SVG_Maker Python tool.
+ * Preprocessing pipeline, port of the IM_SVG_Maker Python tool.
  *
  * The public API mirrors the Python CLI entry points so reasoning stays
  * consistent across implementations:

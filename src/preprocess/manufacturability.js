@@ -5,13 +5,13 @@
  * get cut/printed.
  *
  * Order (mirrors the Python pipeline):
- *   1. Nozzle rounding via opening-then-closing — smooths sharp corners
+ *   1. Nozzle rounding via opening-then-closing, smooths sharp corners
  *      below the printer's reproducible radius.
- *   2. Width floor — erosion-as-predicate, drop polygons whose
+ *   2. Width floor, erosion-as-predicate, drop polygons whose
  *      island.buffer(-w/2) is empty (matches the May-26 IM_SVG_Maker decision
  *      to use erode-only as a keep-or-drop test rather than morphological
  *      opening, which fractured islands at thin necks).
- *   3. Area floor — drop polygons below `minIslandAreaMm2` after nozzle
+ *   3. Area floor, drop polygons below `minIslandAreaMm2` after nozzle
  *      rounding may have whittled them down.
  *
  * Ports:
@@ -43,7 +43,7 @@ function clipperPathToRing(path) {
   return path.map((p) => ({ x: p.X / CLIPPER_SCALE, y: p.Y / CLIPPER_SCALE }))
 }
 
-// PolyTree members are sometimes functions, sometimes properties — same
+// PolyTree members are sometimes functions, sometimes properties, same
 // adapter pattern as svgParse.
 function readMember(node, name) {
   if (node == null) return undefined
@@ -88,7 +88,7 @@ function collectFromPolyTree(node, out) {
  * Offset a polygon set by `delta` SVG units (positive expands, negative
  * erodes). Round joins everywhere (mirrors Python's
  * `shapely.buffer(d, join_style='round')`). Returns a possibly-empty new
- * polygon list — offsets can both split an input polygon into pieces (if
+ * polygon list, offsets can both split an input polygon into pieces (if
  * erosion separates two islands previously connected by a thin neck) and
  * collapse it to nothing (if erosion exceeds the half-width everywhere).
  */
@@ -123,7 +123,7 @@ export function offsetPolygons(polygons, delta) {
 
 /**
  * Open-then-close: erode by r, dilate by 2r, erode by r. Net effect of a
- * round-join opening followed by a round-join closing — smooths both convex
+ * round-join opening followed by a round-join closing, smooths both convex
  * and concave corners under the radius threshold. Direct port of the Python
  * `cut.buffer(-r).buffer(+r).buffer(+r).buffer(-r)` chain.
  */
@@ -138,7 +138,7 @@ function openThenClose(polygons, radius) {
 
 /**
  * Erosion test: does the polygon survive a single `buffer(-r)`? Used for
- * the width floor — if a polygon collapses entirely under erosion by
+ * the width floor, if a polygon collapses entirely under erosion by
  * width/2, its narrowest cross-section is below the threshold and the
  * whole polygon gets dropped (drops-or-keeps semantics; no reshaping).
  */
@@ -187,7 +187,7 @@ export function applyManufacturability(svgString, opts = {}) {
     working = openThenClose(working, rUnits)
   }
 
-  // 2. Width floor — erosion-as-predicate, drop the offenders entirely.
+  // 2. Width floor, erosion-as-predicate, drop the offenders entirely.
   let droppedThin = 0
   if (minFeatureWidthMm > 0) {
     const rUnits = (minFeatureWidthMm / 2) * unitsPerMm
@@ -199,7 +199,7 @@ export function applyManufacturability(svgString, opts = {}) {
     working = kept
   }
 
-  // 3. Area floor — drop polygons below the area threshold (SVG-unit² space).
+  // 3. Area floor, drop polygons below the area threshold (SVG-unit² space).
   let droppedSmall = 0
   if (minIslandAreaMm2 > 0) {
     const thresholdUnits2 = minIslandAreaMm2 * unitsPerMm * unitsPerMm
@@ -214,12 +214,12 @@ export function applyManufacturability(svgString, opts = {}) {
   const warnings = []
   if (droppedThin > 0) {
     warnings.push(
-      `${droppedThin} island(s) dropped — narrower than ${minFeatureWidthMm}mm.`
+      `${droppedThin} island(s) dropped: narrower than ${minFeatureWidthMm}mm.`
     )
   }
   if (droppedSmall > 0) {
     warnings.push(
-      `${droppedSmall} island(s) dropped — smaller than ${minIslandAreaMm2}mm² area.`
+      `${droppedSmall} island(s) dropped: smaller than ${minIslandAreaMm2}mm² area.`
     )
   }
 

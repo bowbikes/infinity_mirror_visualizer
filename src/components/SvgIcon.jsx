@@ -5,7 +5,7 @@ import { clipPolygon } from '../utils/svgClip'
 import { parseSvgToPolygons } from '../preprocess/svgParse'
 import { offsetPolygons } from '../preprocess/manufacturability'
 
-// Cache parsed polygons keyed by raw text — each reflection layer renders
+// Cache parsed polygons keyed by raw text, each reflection layer renders
 // its own SvgIcon, and without this every layer would re-parse + re-XOR
 // the same SVG via clipper. Using parseSvgToPolygons (clipper pftEvenOdd)
 // instead of Three.js's path.toShapes(false) avoids winding-heuristic bugs
@@ -22,10 +22,10 @@ function getParsedPolygons(svgText) {
 }
 
 /**
- * SvgIcon — renders an SVG (preset or uploaded) as a 3D mesh layer.
+ * SvgIcon, renders an SVG (preset or uploaded) as a 3D mesh layer.
  *
  * Uploaded SVGs render as a flat ShapeGeometry from the SVG paths with
- * evenodd fill — this matches what the laser actually cuts out of the
+ * evenodd fill, this matches what the laser actually cuts out of the
  * mirror, so the preview reflects what'll be manufactured. Stroke-only
  * line art needs to be converted to fills upstream (preprocessing pipeline)
  * before it reaches this renderer.
@@ -98,7 +98,7 @@ function SvgIconImpl({
         }))
 
         // Edge Thickness for custom SVGs dilates the black areas outward
-        // — thin line art gets thicker, solid shapes get bigger. Matches
+        // thin line art gets thicker, solid shapes get bigger. Matches
         // the "thicker edges → more material" reading. Uses the same
         // Clipper-backed offset as the manufacturability pipeline so the
         // join behavior is consistent.
@@ -138,7 +138,7 @@ function SvgIconImpl({
         if (geometries.length === 1) return geometries[0]
 
         // Merge into one BufferGeometry so we render in a single draw call.
-        // ShapeGeometry is INDEXED — naïvely concatenating .position arrays
+        // ShapeGeometry is INDEXED, naïvely concatenating .position arrays
         // throws away the .index buffer and produces a garbage triangle salad
         // (the cyan-triangle-spike artifact). Expand each indexed geometry
         // into a flat triangle list before concatenating.
@@ -315,14 +315,14 @@ function SvgIconImpl({
   // their albedo per layer.
   //
   // We compensate for the fact that the human eye + sRGB display don't
-  // see colors of equal saturation at equal brightness — blues look
+  // see colors of equal saturation at equal brightness, blues look
   // dim, yellows look punchy. emissiveIntensity scales inversely with
   // the color's Rec.709 luminance so emission × intrinsic_luminance
   // (i.e. what reaches the eye) lands near a constant across the hue
   // circle. With POWER=1.0 the math gives exact perceived uniformity
   // ignoring tone mapping; values below 1.0 under-compensate (brighter
   // hues stay brighter), values above 1.0 over-compensate (push the
-  // dim hues like blue past the bright ones — useful when bloom is on
+  // dim hues like blue past the bright ones, useful when bloom is on
   // and further amplifies already-bright pixels).
   //
   // BASELINE is set so default cyan emission ≈ what the previous

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import './OrbitHint.css'
 
 /**
- * OrbitHint — bottom-center nudge telling the visitor the preview is a real
+ * OrbitHint, bottom-center nudge telling the visitor the preview is a real
  * 3D view they can spin, not a flat head-on render. Without this, people
  * assume the reflection only looks the way it does straight-on and never
  * discover that dragging reveals how the tunnel of reflections actually
@@ -50,7 +50,7 @@ export default function OrbitHint() {
         <path d="M3.5 12 L1.5 12 M22.5 12 L20.5 12" opacity="0.7" />
       </svg>
       <span className="orbit-hint__text">
-        Click and drag to orbit — see how the reflection <em>really</em> recedes
+        Click and drag to orbit, see how the reflection <em>really</em> recedes
       </span>
     </div>
   )
