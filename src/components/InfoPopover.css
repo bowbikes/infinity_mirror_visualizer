@@ -1,7 +1,7 @@
 /*
- * InfoPopover, top-left "what is this" card and its collapsed ⓘ
- * reopen button. Italic-default typography matches the Layered Logic
- * brand. Berkeley Mono if installed, else system mono fallback.
+ * InfoPopover: the top-left "what is this" sheet and its collapsed reopen
+ * button. A clean sheet laid over the scene: ink rule, 2px corners, sans
+ * body, mono label. No blur, no shadow stack, no italics.
  */
 
 .info-card {
@@ -9,17 +9,14 @@
   top: 12px;
   left: 12px;
   z-index: 1080;
-  width: min(360px, calc(100% - 24px));
-  background-color: rgba(26, 26, 26, 0.94);
-  color: #f5f5f5;
-  border: 1px solid #444;
-  border-radius: 8px;
-  padding: 16px 18px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(8px);
-  font-family: 'Berkeley Mono', ui-monospace, 'SF Mono', Menlo,
-    Consolas, monospace;
-  font-style: italic;
+  width: min(310px, calc(100% - 24px));
+  background-color: var(--bg-raised);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-top: 2px solid var(--text);
+  border-radius: var(--radius);
+  padding: 14px 16px 12px;
+  font-family: var(--font-sans);
   font-size: 13px;
   line-height: 1.5;
 }
@@ -32,77 +29,83 @@
   margin-bottom: 8px;
 }
 
+.info-eyebrow {
+  display: block;
+  margin-bottom: 2px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
 .info-title {
   margin: 0;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
-  font-style: italic;
-  color: #ffffff;
-  letter-spacing: 0.01em;
+  color: var(--text);
+  letter-spacing: -0.005em;
 }
 
 .info-close {
   background: none;
   border: none;
-  color: #999;
+  color: var(--text-3);
   font-size: 22px;
   line-height: 1;
   cursor: pointer;
   padding: 0 4px;
+  min-width: 28px;
+  min-height: 28px;
   font-family: inherit;
   flex-shrink: 0;
 }
 
 .info-close:hover {
-  color: #fff;
+  color: var(--text);
 }
 
 .info-body {
   margin: 0 0 10px 0;
-  color: #ddd;
+  color: var(--text-2);
 }
 
 .info-howto {
+  list-style: none;
   margin: 0 0 12px 0;
-  padding-left: 18px;
-  color: #ccc;
+  padding: 0;
+  color: var(--text-2);
+  border-top: 1px solid var(--border);
 }
 
 .info-howto li {
-  margin-bottom: 4px;
+  display: grid;
+  grid-template-columns: 4.25rem minmax(0, 1fr);
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
 }
 
 .info-howto strong {
-  color: #ffffff;
-  font-style: normal;
-  font-weight: 600;
-}
-
-.info-howto em {
-  color: #00ffff;
-  font-style: italic;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  padding-top: 2px;
 }
 
 .info-brand {
-  padding-top: 10px;
-  border-top: 1px solid #333;
-  color: #aaa;
+  color: var(--text-3);
   font-size: 12px;
 }
 
 .info-brand-link {
-  color: #00ffff;
-  text-decoration: none;
-  font-style: italic;
-  font-weight: 500;
-}
-
-.info-brand-link:hover {
+  color: var(--indigo-text);
   text-decoration: underline;
-}
-
-.info-tagline {
-  color: #888;
+  text-underline-offset: 2px;
+  font-weight: 500;
 }
 
 .info-reopen {
@@ -110,18 +113,17 @@
   top: 12px;
   left: 12px;
   z-index: 1060;
-  width: 36px;
-  height: 36px;
-  background-color: rgba(26, 26, 26, 0.88);
-  color: #ffffff;
-  border: 1px solid #444;
-  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  background-color: var(--bg-raised);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  backdrop-filter: blur(6px);
 }
 
 .info-reopen svg {
@@ -130,14 +132,15 @@
 }
 
 .info-reopen:hover {
-  background-color: rgba(50, 50, 50, 0.95);
-  border-color: #666;
+  background-color: var(--bg-overlay);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 899px) {
+  /* Leave the top-right corner clear: the drawer button lives there, and the
+     full-width card used to sit on top of it. */
   .info-card {
-    width: calc(100% - 24px);
+    width: calc(100% - 24px - 56px);
     font-size: 12px;
-    padding: 12px 14px;
+    padding: 12px 14px 10px;
   }
 }

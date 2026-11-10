@@ -13,8 +13,8 @@
 }
 
 .modal-content {
-  background-color: #1a1a1a;
-  border-radius: 12px;
+  background-color: var(--bg-raised);
+  border-radius: 2px;
   width: 100%;
   max-width: 600px;
   max-height: 90vh;
@@ -26,7 +26,7 @@
 
 .modal-header {
   padding: 24px 24px 16px;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -36,13 +36,13 @@
   margin: 0;
   font-size: 24px;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--text);
 }
 
 .close-button {
   background: none;
   border: none;
-  color: #999;
+  color: var(--text-3);
   font-size: 32px;
   cursor: pointer;
   padding: 0;
@@ -51,13 +51,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: 2px;
   transition: all 0.2s;
 }
 
 .close-button:hover:not(:disabled) {
-  background-color: #333;
-  color: #fff;
+  background-color: var(--bg-overlay);
+  color: var(--text);
 }
 
 .close-button:disabled {
@@ -73,14 +73,14 @@
 
 .modal-description {
   margin: 0 0 12px 0;
-  color: #ccc;
+  color: var(--text-2);
   line-height: 1.6;
 }
 
 .export-features {
   margin: 0 0 24px 0;
   padding-left: 24px;
-  color: #aaa;
+  color: var(--text-3);
   line-height: 1.8;
 }
 
@@ -96,14 +96,14 @@
   margin: 0 0 12px 0;
   font-size: 16px;
   font-weight: 600;
-  color: #fff;
+  color: var(--text);
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
 .required {
-  color: #ff6b6b;
+  color: var(--bad);
 }
 
 .radio-group {
@@ -117,16 +117,16 @@
   align-items: center;
   gap: 10px;
   padding: 12px;
-  border: 2px solid #333;
-  border-radius: 8px;
+  border: 2px solid var(--border);
+  border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s;
-  background-color: #222;
+  background-color: var(--bg-overlay);
 }
 
 .radio-label:hover {
-  border-color: #555;
-  background-color: #282828;
+  border-color: var(--border-strong);
+  background-color: var(--bg-overlay);
 }
 
 .radio-label input[type="radio"] {
@@ -136,12 +136,12 @@
 }
 
 .radio-label input[type="radio"]:checked + span {
-  color: #fff;
+  color: var(--text);
   font-weight: 500;
 }
 
 .radio-label span {
-  color: #ccc;
+  color: var(--text-2);
   font-size: 15px;
 }
 
@@ -152,7 +152,7 @@
 .form-group label {
   display: block;
   margin-bottom: 6px;
-  color: #ccc;
+  color: var(--text-2);
   font-size: 14px;
   font-weight: 500;
 }
@@ -161,10 +161,10 @@
 .form-group textarea {
   width: 100%;
   padding: 10px 12px;
-  background-color: #222;
-  border: 2px solid #333;
-  border-radius: 6px;
-  color: #fff;
+  background-color: var(--bg-overlay);
+  border: 2px solid var(--border);
+  border-radius: 2px;
+  color: var(--text);
   font-size: 14px;
   font-family: inherit;
   transition: border-color 0.2s;
@@ -173,7 +173,7 @@
 .form-group input:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #00ffff;
+  border-color: var(--indigo-signal);
 }
 
 .form-group input:disabled,
@@ -188,22 +188,22 @@
 }
 
 .security-notice {
-  background-color: #1a3a1a;
-  border: 1px solid #2d5a2d;
-  border-radius: 8px;
+  background-color: var(--ok-bg);
+  border: 1px solid var(--ok);
+  border-radius: 2px;
   padding: 12px;
-  color: #9fd99f;
+  color: var(--ok);
   font-size: 13px;
   line-height: 1.6;
 }
 
 .security-notice strong {
-  color: #b8f0b8;
+  color: var(--ok);
 }
 
 .modal-footer {
   padding: 16px 24px;
-  border-top: 1px solid #333;
+  border-top: 1px solid var(--border);
   display: flex;
   gap: 12px;
   justify-content: flex-end;
@@ -212,7 +212,7 @@
 .button-primary,
 .button-secondary {
   padding: 10px 24px;
-  border-radius: 6px;
+  border-radius: 2px;
   font-size: 15px;
   font-weight: 500;
   cursor: pointer;
@@ -221,31 +221,31 @@
 }
 
 .button-primary {
-  background-color: #00ffff;
-  color: #000;
+  background-color: var(--indigo-signal);
+  color: var(--on-indigo);
 }
 
 .button-primary:hover:not(:disabled) {
-  background-color: #00dddd;
+  background-color: var(--indigo-signal);
   transform: translateY(-1px);
 }
 
 .button-primary:disabled {
-  background-color: #004d4d;
-  color: #666;
+  background-color: var(--bg-overlay);
+  color: var(--text-3);
   cursor: not-allowed;
   transform: none;
 }
 
 .button-secondary {
   background-color: transparent;
-  color: #ccc;
-  border: 2px solid #444;
+  color: var(--text-2);
+  border: 2px solid var(--border-strong);
 }
 
 .button-secondary:hover:not(:disabled) {
-  background-color: #333;
-  border-color: #555;
+  background-color: var(--bg-overlay);
+  border-color: var(--border-strong);
 }
 
 .button-secondary:disabled {

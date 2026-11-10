@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { OrbitControls } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import InfinityMirrorBox from './InfinityMirrorBox'
@@ -25,11 +25,22 @@ export default function InfinityMirrorScene({
   iconPosition,
   reflectionDepth,
   autoOrbit,
+  onUserOrbitStart,
   edgeThickness,
   lightIntensity = 1.0,
 }) {
   const orbitControlsRef = useRef()
   const orbitTimeRef = useRef(0)
+  // The page opens with the camera already orbiting, because a head-on view
+  // hides the one thing this tool exists to show: how the reflections recede.
+  // The moment the visitor grabs the scene, they get the camera. This ref
+  // stops the auto-orbit in the SAME frame as the grab; the state change that
+  // follows (autoOrbit -> false) arrives a render later, and without the ref
+  // the two would fight over the camera for that frame.
+  const userTookOverRef = useRef(false)
+  useEffect(() => {
+    if (autoOrbit) userTookOverRef.current = false
+  }, [autoOrbit])
 
   // Calculate wall dimensions based on frame size
   const frameWidthUnits = frameWidthMm / 10
@@ -39,7 +50,7 @@ export default function InfinityMirrorScene({
 
   // Auto-orbit, smooth rotation around the Z axis at one full turn / 10s.
   useFrame((state, delta) => {
-    if (!autoOrbit || !orbitControlsRef.current) {
+    if (!autoOrbit || userTookOverRef.current || !orbitControlsRef.current) {
       // Snap the accumulator back to zero exactly once when orbit stops, so
       // the next enable starts from a known phase.
       if (orbitTimeRef.current !== 0) orbitTimeRef.current = 0
@@ -71,7 +82,17 @@ export default function InfinityMirrorScene({
         minDistance={30}
         maxDistance={180}
         enablePan={false}
-        enableRotate={!autoOrbit}
+        // Rotation stays enabled while auto-orbiting, so the first drag
+        // works. It used to be disabled, which meant a visitor who dragged a
+        // moving scene got nothing and had to find the checkbox first. The
+        // auto-orbit path (25 degrees off the mirror's axis) sits inside the
+        // polar and azimuth limits above, so the handoff never snaps.
+        onStart={() => {
+          if (autoOrbit && !userTookOverRef.current) {
+            userTookOverRef.current = true
+            onUserOrbitStart?.()
+          }
+        }}
       />
 
       {/* Lighting */}

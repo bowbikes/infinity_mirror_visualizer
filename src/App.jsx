@@ -73,6 +73,23 @@ function decodeConfigFromHash() {
   }
 }
 
+// The camera orbits on load unless the visitor has asked their system for
+// less motion. Visitors kept missing that the preview is a real 3D view: seen
+// head-on, an infinity mirror looks like a flat ring. A link that was shared
+// with orbit off still opens with it off (the hash wins over this default).
+const PREFERS_REDUCED_MOTION =
+  typeof window !== 'undefined' &&
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+// Who may tell this frame to switch its lights (see the lights effect in App).
+const LIGHTS_ORIGINS = [
+  'https://billwhite.me',
+  'https://www.billwhite.me',
+  'https://billwhite-me.pages.dev',
+  'http://localhost:4321',
+]
+
 // Single source of truth for every starting value. Used both for useState
 // init and for the "Reset all" button. Adding a new control? Add its
 // default here and the reset path picks it up for free.
@@ -92,7 +109,7 @@ const DEFAULTS = {
   iconPositionY: 0,
   edgeThickness: 0.2,
   reflectionDepth: 7,
-  autoOrbit: false,
+  autoOrbit: !PREFERS_REDUCED_MOTION,
   enableBloom: false,
   lightIntensity: 0.5,
 }
@@ -260,6 +277,8 @@ function App() {
       reflectionDepth,
       autoOrbit,
       enableBloom,
+      // Was missing, so a shared link silently lost its light intensity.
+      lightIntensity,
     })
     const newHash = `${HASH_PREFIX}${encoded}`
     if (window.location.hash !== newHash) {
@@ -284,6 +303,33 @@ function App() {
     enableBloom,
     lightIntensity,
   ])
+
+  // Lights. This app is framed by billwhite.me, which has a Lights switch.
+  // The frame is a different origin, so it cannot read the site's choice:
+  // the site passes ?lights=off in the frame URL at load, and posts
+  // { type: 'lights', off: boolean } when the visitor flips the switch.
+  // Opened on its own, the app is lit.
+  useEffect(() => {
+    const root = document.documentElement
+    const apply = (off) => {
+      if (off) root.setAttribute('data-lights', 'off')
+      else root.removeAttribute('data-lights')
+    }
+    apply(new URLSearchParams(window.location.search).get('lights') === 'off')
+    const onMessage = (e) => {
+      if (!LIGHTS_ORIGINS.includes(e.origin)) return
+      if (e.data && e.data.type === 'lights') apply(Boolean(e.data.off))
+    }
+    window.addEventListener('message', onMessage)
+    // Framed: ask the host which state it is in now that we can hear the
+    // answer. Nothing private in the question, so any parent may receive it.
+    if (window.parent !== window) {
+      try {
+        window.parent.postMessage({ type: 'lights?' }, '*')
+      } catch {}
+    }
+    return () => window.removeEventListener('message', onMessage)
+  }, [])
 
   const handleCopyShareLink = async () => {
     try {
@@ -475,6 +521,7 @@ function App() {
             iconPosition={[iconPositionX, iconPositionY, 0]}
             reflectionDepth={reflectionDepth}
             autoOrbit={autoOrbit}
+            onUserOrbitStart={() => setAutoOrbit(false)}
             edgeThickness={edgeThickness}
             lightIntensity={lightIntensity}
           />
@@ -495,7 +542,7 @@ function App() {
 
       {/* "Drag to orbit" nudge: bottom-center over the canvas. Hidden
           while a modal is open so it doesn't float over the dialog. */}
-      {!isCustomArtModalOpen && !isExportModalOpen && <OrbitHint />}
+      {!isCustomArtModalOpen && !isExportModalOpen && <OrbitHint orbiting={autoOrbit} />}
 
       {/* About card / Layered Logic brand corner. Auto-dismisses to a
           small ⓘ button after the user closes it (sticky via
@@ -610,8 +657,8 @@ const styles = {
   container: {
     display: 'flex',
     width: '100vw',
-    height: '100vh',
-    backgroundColor: '#000000',
+    height: '100dvh',
+    backgroundColor: 'var(--plate)',
     overflow: 'hidden'
   },
   canvasContainer: {

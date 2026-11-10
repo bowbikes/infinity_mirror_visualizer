@@ -45,7 +45,7 @@ function SliderControl({
         >
           {label}: {display}
           {suffix ?? ''}
-          {tooltip && <span style={styles.helpIcon} title={tooltip}> ⓘ</span>}
+          {tooltip && <span style={styles.helpIcon} title={tooltip}> ?</span>}
         </label>
         <input
           type="number"
@@ -173,20 +173,10 @@ export default function ControlsPanel({
     }
   }
 
-  // Pick a readable text color against the export button's background.
-  const getContrastColor = (hexColor) => {
-    const hex = hexColor.replace('#', '')
-    const r = parseInt(hex.substr(0, 2), 16)
-    const g = parseInt(hex.substr(2, 2), 16)
-    const b = parseInt(hex.substr(4, 2), 16)
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-    return luminance > 0.5 ? '#000000' : '#ffffff'
-  }
-
   return (
     <div style={styles.panel}>
       <div style={styles.titleRow}>
-        <h2 style={styles.title}>Infinity Mirror Configurator</h2>
+        <h2 style={styles.title}>Mirror visualizer</h2>
         <button
           type="button"
           onClick={onResetAll}
@@ -495,11 +485,7 @@ export default function ControlsPanel({
         <h3 style={styles.sectionTitle}>Export</h3>
         <button
           onClick={onExportClick}
-          style={{
-            ...styles.exportButton,
-            backgroundColor: lightColor,
-            color: getContrastColor(lightColor)
-          }}
+          style={styles.exportButton}
         >
           Save & Export Design
         </button>
@@ -528,10 +514,10 @@ const styles = {
     height: '100%',
     maxHeight: '100vh',
     overflowY: 'auto',
-    backgroundColor: '#1a1a1a',
-    color: '#ffffff',
+    backgroundColor: 'var(--bg-raised)',
+    color: 'var(--text)',
     padding: '20px',
-    fontFamily: 'system-ui, -apple-system, sans-serif',
+    fontFamily: 'var(--font-sans)',
     boxSizing: 'border-box'
   },
   titleRow: {
@@ -543,43 +529,47 @@ const styles = {
   },
   title: {
     margin: 0,
-    fontSize: '20px',
-    fontWeight: '600'
+    fontSize: '17px',
+    fontWeight: 600,
+    letterSpacing: '-0.005em',
+    lineHeight: 1.25,
   },
   resetAllButton: {
-    padding: '6px 10px',
-    fontSize: '11px',
+    padding: '4px 0',
+    fontSize: '12px',
     backgroundColor: 'transparent',
-    color: '#999',
-    borderWidth: '1px',
-    borderStyle: 'solid',
-    borderColor: '#555',
-    borderRadius: '4px',
+    color: 'var(--indigo-text)',
+    border: 'none',
+    textDecoration: 'underline',
+    textUnderlineOffset: '3px',
     cursor: 'pointer',
     fontFamily: 'inherit',
     flexShrink: 0,
   },
   section: {
-    marginBottom: '24px',
-    paddingBottom: '16px',
-    borderBottom: '1px solid #333'
+    marginBottom: '20px',
+    paddingTop: '14px',
+    borderTop: '1px solid var(--border-strong)',
   },
   sectionTitle: {
     margin: '0 0 12px 0',
-    fontSize: '14px',
-    fontWeight: '600',
+    fontFamily: 'var(--font-mono)',
+    fontSize: '11px',
+    fontWeight: 500,
+    letterSpacing: '0.07em',
     textTransform: 'uppercase',
-    color: '#999'
+    color: 'var(--text-3)',
   },
   subsectionTitle: {
-    margin: '8px 0 10px 0',
-    paddingTop: '8px',
-    borderTop: '1px solid #2a2a2a',
+    margin: '14px 0 10px 0',
+    paddingTop: '10px',
+    borderTop: '1px solid var(--border)',
+    fontFamily: 'var(--font-mono)',
     fontSize: '11px',
-    fontWeight: '600',
+    fontWeight: 500,
     textTransform: 'uppercase',
-    color: '#777',
-    letterSpacing: '0.04em',
+    color: 'var(--text-3)',
+    letterSpacing: '0.07em',
   },
   control: {
     marginBottom: '12px'
@@ -588,12 +578,13 @@ const styles = {
     display: 'block',
     marginBottom: '6px',
     fontSize: '13px',
-    color: '#ccc'
+    color: 'var(--text-2)'
   },
   helpIcon: {
-    color: '#666',
+    color: 'var(--text-3)',
     cursor: 'help',
-    fontSize: '12px',
+    fontFamily: 'var(--font-mono)',
+    fontSize: '11px',
   },
   sliderHeaderRow: {
     display: 'flex',
@@ -605,12 +596,12 @@ const styles = {
   numericInput: {
     width: '64px',
     padding: '4px 6px',
-    backgroundColor: '#2a2a2a',
-    color: '#ffffff',
+    backgroundColor: 'var(--bg)',
+    color: 'var(--text)',
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: '#444',
-    borderRadius: '4px',
+    borderColor: 'var(--border-strong)',
+    borderRadius: '2px',
     fontSize: '12px',
     fontFamily: 'inherit',
     boxSizing: 'border-box',
@@ -618,49 +609,50 @@ const styles = {
   select: {
     width: '100%',
     padding: '8px',
-    backgroundColor: '#2a2a2a',
-    color: '#ffffff',
-    border: '1px solid #444',
-    borderRadius: '4px',
+    backgroundColor: 'var(--bg)',
+    color: 'var(--text)',
+    border: '1px solid var(--border-strong)',
+    borderRadius: '2px',
     fontSize: '13px'
   },
   fileInput: {
     width: '100%',
     padding: '8px',
     fontSize: '12px',
-    color: '#ffffff',
-    backgroundColor: '#2a2a2a',
-    border: '1px solid #444',
-    borderRadius: '4px'
+    color: 'var(--text)',
+    backgroundColor: 'var(--bg)',
+    border: '1px solid var(--border-strong)',
+    borderRadius: '2px'
   },
   colorInput: {
     width: '50px',
     height: '36px',
-    border: '1px solid #444',
-    borderRadius: '4px',
-    backgroundColor: '#2a2a2a',
+    border: '1px solid var(--border-strong)',
+    borderRadius: '2px',
+    backgroundColor: 'var(--bg)',
     cursor: 'pointer',
     marginRight: '8px'
   },
   textInput: {
     width: 'calc(100% - 66px)',
     padding: '8px',
-    backgroundColor: '#2a2a2a',
-    color: '#ffffff',
+    fontFamily: 'var(--font-mono)',
+    backgroundColor: 'var(--bg)',
+    color: 'var(--text)',
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: '#444',
-    borderRadius: '4px',
+    borderColor: 'var(--border-strong)',
+    borderRadius: '2px',
     fontSize: '13px'
   },
   textInputInvalid: {
-    borderColor: '#ff6666',
+    borderColor: 'var(--bad)',
   },
   slider: {
     width: '100%',
     height: '4px',
     borderRadius: '2px',
-    backgroundColor: '#444',
+    backgroundColor: 'var(--border-strong)',
     outline: 'none',
     cursor: 'pointer'
   },
@@ -672,19 +664,19 @@ const styles = {
     flex: 1,
     padding: '6px 0',
     fontSize: '12px',
-    backgroundColor: '#2a2a2a',
-    color: '#ccc',
+    backgroundColor: 'var(--bg)',
+    color: 'var(--text-2)',
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: '#444',
-    borderRadius: '4px',
+    borderColor: 'var(--border-strong)',
+    borderRadius: '2px',
     cursor: 'pointer',
     fontFamily: 'inherit',
   },
   unitToggleButtonActive: {
-    backgroundColor: '#00ffff',
-    color: '#000',
-    borderColor: '#00ffff',
+    backgroundColor: 'var(--indigo-signal)',
+    color: 'var(--on-indigo)',
+    borderColor: 'var(--indigo-signal)',
     fontWeight: 600,
   },
   checkboxLabel: {
@@ -702,29 +694,28 @@ const styles = {
   error: {
     marginTop: '6px',
     padding: '8px',
-    backgroundColor: '#441111',
-    color: '#ff6666',
-    borderRadius: '4px',
+    backgroundColor: 'var(--bad-bg)',
+    color: 'var(--bad)',
+    borderRadius: '2px',
     fontSize: '12px'
   },
   exportButton: {
     width: '100%',
-    padding: '12px 16px',
-    backgroundColor: '#00ffff',
-    color: '#000',
+    padding: '11px 16px',
+    backgroundColor: 'var(--indigo-signal)',
+    color: 'var(--on-indigo)',
     border: 'none',
-    borderRadius: '6px',
+    borderRadius: '2px',
     fontSize: '14px',
-    fontWeight: '600',
+    fontWeight: 600,
+    fontFamily: 'inherit',
     cursor: 'pointer',
-    transition: 'all 0.2s',
     marginBottom: '8px'
   },
   exportNote: {
-    color: '#999',
+    color: 'var(--text-3)',
     fontSize: '11px',
     lineHeight: '1.4',
-    textAlign: 'center'
   },
   customArtSummary: {
     display: 'flex',
@@ -737,8 +728,8 @@ const styles = {
     backgroundColor: '#ffffff',
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: '#444',
-    borderRadius: '4px',
+    borderColor: 'var(--border-strong)',
+    borderRadius: '2px',
     objectFit: 'contain',
     padding: '4px',
     boxSizing: 'border-box',
@@ -753,7 +744,7 @@ const styles = {
   },
   customArtFilename: {
     fontSize: '12px',
-    color: '#ccc',
+    color: 'var(--text-2)',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
@@ -761,12 +752,12 @@ const styles = {
   customArtEditButton: {
     padding: '6px 10px',
     fontSize: '12px',
-    backgroundColor: '#2a2a2a',
-    color: '#ccc',
+    backgroundColor: 'var(--bg)',
+    color: 'var(--text-2)',
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: '#555',
-    borderRadius: '4px',
+    borderColor: 'var(--border-strong)',
+    borderRadius: '2px',
     cursor: 'pointer',
     fontFamily: 'inherit',
     alignSelf: 'flex-start',
@@ -775,10 +766,10 @@ const styles = {
     width: '100%',
     padding: '12px',
     fontSize: '13px',
-    backgroundColor: '#00ffff',
-    color: '#000',
+    backgroundColor: 'var(--indigo-signal)',
+    color: 'var(--on-indigo)',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: '2px',
     cursor: 'pointer',
     fontFamily: 'inherit',
     fontWeight: 600,
@@ -789,11 +780,11 @@ const styles = {
     padding: '8px',
     fontSize: '12px',
     backgroundColor: 'transparent',
-    color: '#ccc',
+    color: 'var(--text-2)',
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: '#555',
-    borderRadius: '4px',
+    borderColor: 'var(--border-strong)',
+    borderRadius: '2px',
     cursor: 'pointer',
     fontFamily: 'inherit',
   },

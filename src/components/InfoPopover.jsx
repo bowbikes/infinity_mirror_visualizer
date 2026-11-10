@@ -2,13 +2,30 @@ import { useEffect, useState } from 'react'
 import './InfoPopover.css'
 
 /**
- * InfoPopover, top-left "what is this" card.
+ * InfoPopover, top-left "what is this" sheet.
  *
- * Shown by default on first visit. Once the user closes it, the
- * dismissal sticks via localStorage and a small ⓘ button takes its
- * place so they can reopen at any time.
+ * Shown by default on a first visit at desktop widths. Once the user closes
+ * it, the dismissal sticks via localStorage and a small button takes its
+ * place so they can reopen it at any time.
+ *
+ * On narrow screens it starts closed: the sheet used to cover the top third
+ * of a phone, including the mirror itself and the drawer button.
+ *
+ * Storage is wrapped in try/catch. This app runs inside a cross-origin frame
+ * on billwhite.me, and a browser that blocks third-party storage throws on
+ * the first touch of localStorage. Unguarded, that throw inside an effect
+ * takes the whole React tree down with it.
  */
 const STORAGE_KEY = 'imv:info-dismissed'
+const NARROW_PX = 900
+
+function wasDismissed() {
+  try {
+    return window.localStorage.getItem(STORAGE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 export default function InfoPopover() {
   const [open, setOpen] = useState(false)
@@ -16,10 +33,8 @@ export default function InfoPopover() {
   // Honor a stored dismissal on mount. Defaulting `open` to false avoids
   // a flash of the card on returning visits before the effect runs.
   useEffect(() => {
-    const dismissed =
-      typeof window !== 'undefined' &&
-      window.localStorage.getItem(STORAGE_KEY) === '1'
-    if (!dismissed) setOpen(true)
+    const narrow = typeof window !== 'undefined' && window.innerWidth < NARROW_PX
+    if (!narrow && !wasDismissed()) setOpen(true)
   }, [])
 
   const dismiss = () => {
@@ -58,7 +73,10 @@ export default function InfoPopover() {
   return (
     <div className="info-card" role="dialog" aria-label="About this tool">
       <div className="info-header">
-        <h2 className="info-title">Infinity Mirror Configurator</h2>
+        <div>
+          <span className="info-eyebrow">Layered Logic</span>
+          <h2 className="info-title">Mirror visualizer</h2>
+        </div>
         <button
           type="button"
           className="info-close"
@@ -69,26 +87,25 @@ export default function InfoPopover() {
         </button>
       </div>
       <p className="info-body">
-        Design an infinity mirror before it's manufactured. Pick a preset
-        shape or upload your own black-and-white art, tune the frame
-        dimensions, colors, and light intensity, then export the config or
-        share a link.
+        Design an infinity mirror before it is made. The preview is a real 3D
+        view: drag it to look down the tunnel of reflections.
       </p>
       <ul className="info-howto">
         <li>
-          <strong>Icon</strong>, pick a preset or <em>Custom Upload</em>{' '}
-          to bring in your own art.
+          <strong>Icon</strong>
+          <span>Pick a preset shape, or choose Custom Upload to bring your own art.</span>
         </li>
         <li>
-          <strong>Colors</strong>, set the light hue and overall intensity.
+          <strong>Colors</strong>
+          <span>Wall, frame and light, plus how bright the light runs.</span>
         </li>
         <li>
-          <strong>Frame</strong>, width, height, depth, and reflection
-          layers.
+          <strong>Frame</strong>
+          <span>Width, height, depth and how many reflections to draw.</span>
         </li>
         <li>
-          <strong>Export</strong>, download the config bundle or copy a
-          shareable URL.
+          <strong>Export</strong>
+          <span>Download the design bundle, or copy a link that restores it.</span>
         </li>
       </ul>
       <div className="info-brand">
@@ -101,7 +118,6 @@ export default function InfoPopover() {
         >
           Layered Logic
         </a>
-        <span className="info-tagline"> · light that layers.</span>
       </div>
     </div>
   )

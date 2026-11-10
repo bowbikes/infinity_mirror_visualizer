@@ -1,3 +1,76 @@
+/*
+  Tokens: copied from billwhite.me rev 4 ("the calc pad"), site/src/styles/tokens.css.
+  This app is framed inside that site (billwhite.me/mirror-demo), so its chrome
+  is the same sheet of paper: graphite ink, indigo used as a pen, 2px corners,
+  ruled sections, mono labels. The 3D scene is the one thing made of light, so
+  it sits on a dark plate whatever the lights are doing.
+
+  Two states, like the site: lights on (default) and lights off. The site tells
+  the frame which one it is in (?lights=off at load, a postMessage on change);
+  see the lights effect in App.jsx.
+
+  Inline styles in the components use these through var(--name), so a colour
+  only ever changes here.
+*/
+
+:root {
+  color-scheme: light;
+
+  --bg: #f1f2ee;             /* the pad: input wells */
+  --bg-raised: #fafaf7;      /* a clean sheet: the panel, cards, dialogs */
+  --bg-overlay: #e3e5de;     /* hover, pressed, notes */
+  --text: #17181b;
+  --text-2: #44464c;
+  --text-3: #5d6067;
+  --border: rgba(23, 24, 27, 0.16);
+  --border-strong: rgba(23, 24, 27, 0.45);
+
+  --indigo-signal: #3214ff;  /* fills */
+  --indigo-text: #3214ff;    /* links and accents */
+  --on-indigo: #ffffff;
+
+  --ok: #0a6b3b;
+  --ok-bg: rgba(10, 107, 59, 0.1);
+  --warn: #8a5200;
+  --warn-bg: rgba(138, 82, 0, 0.11);
+  --bad: #a3231c;
+  --bad-bg: rgba(163, 35, 28, 0.09);
+
+  --plate: #121116;          /* behind the 3D scene, in both states */
+  --scrim: rgba(18, 17, 22, 0.55);
+
+  --font-sans: "Neue Haas Grotesk Text", "IBM Plex Sans", ui-sans-serif,
+    system-ui, sans-serif;
+  --font-mono: "Berkeley Mono", "IBM Plex Mono", ui-monospace, "Cascadia Mono",
+    monospace;
+  --radius: 2px;
+}
+
+:root[data-lights="off"] {
+  color-scheme: dark;
+
+  --bg: #121116;
+  --bg-raised: #1a191f;
+  --bg-overlay: #25242c;
+  --text: #efeee8;
+  --text-2: #b6b3bd;
+  --text-3: #938f9c;
+  --border: rgba(239, 238, 232, 0.14);
+  --border-strong: rgba(239, 238, 232, 0.4);
+
+  --indigo-signal: #3d22ff;
+  --indigo-text: #a797ff;
+
+  --ok: #4ade80;
+  --ok-bg: rgba(74, 222, 128, 0.12);
+  --warn: #fbbf24;
+  --warn-bg: rgba(251, 191, 36, 0.12);
+  --bad: #ff8a80;
+  --bad-bg: rgba(255, 138, 128, 0.12);
+
+  --scrim: rgba(0, 0, 0, 0.6);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -6,9 +79,9 @@
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: var(--font-sans);
+  color: var(--text);
+  background: var(--plate);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
@@ -17,22 +90,64 @@ body {
 #root {
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
 }
 
-/* Scrollbar styling for controls panel */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+/* Inline styles cannot express focus, hover or native control tints. */
+:focus-visible {
+  outline: 2px solid var(--indigo-text);
+  outline-offset: 2px;
+}
+
+input[type="range"],
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--indigo-signal);
+}
+
+input[type="number"] {
+  font-family: var(--font-mono);
+}
+
+button:not(:disabled):hover {
+  filter: brightness(0.96);
+}
+:root[data-lights="off"] button:not(:disabled):hover {
+  filter: brightness(1.12);
+}
+
+a {
+  color: var(--indigo-text);
+}
+
+::selection {
+  background: var(--indigo-signal);
+  color: var(--on-indigo);
+}
+
 ::-webkit-scrollbar {
   width: 8px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #1a1a1a;
+  background: var(--bg-raised);
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #444;
-  border-radius: 4px;
+  background: var(--border-strong);
+  border-radius: 0;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #555;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
