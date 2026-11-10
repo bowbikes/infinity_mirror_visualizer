@@ -156,6 +156,8 @@ export default function ControlsPanel({
   onLightIntensityChange,
   enableBloom,
   onEnableBloomChange,
+  showRoom,
+  onShowRoomChange,
   onExportClick,
   defaults,
   onResetAll,
@@ -409,6 +411,21 @@ export default function ControlsPanel({
               style={styles.checkbox}
             />
             Bloom glow
+          </label>
+        </div>
+
+        <div style={styles.control}>
+          <label
+            style={styles.checkboxLabel}
+            title="A shelf and two small framed pieces around the mirror, for a sense of scale. They take their colour from the wall. Turn off for a clean product view."
+          >
+            <input
+              type="checkbox"
+              checked={showRoom}
+              onChange={(e) => onShowRoomChange(e.target.checked)}
+              style={styles.checkbox}
+            />
+            Room: shelf and frames
           </label>
         </div>
       </div>

@@ -53,6 +53,7 @@ const SHARED_KEYS = [
   'autoOrbit',
   'enableBloom',
   'lightIntensity',
+  'showRoom',
 ]
 const HASH_PREFIX = '#cfg='
 
@@ -112,6 +113,7 @@ const DEFAULTS = {
   autoOrbit: !PREFERS_REDUCED_MOTION,
   enableBloom: false,
   lightIntensity: 0.5,
+  showRoom: true,
 }
 
 function App() {
@@ -171,6 +173,7 @@ function App() {
     if (cfg.autoOrbit != null) setAutoOrbit(cfg.autoOrbit)
     if (cfg.enableBloom != null) setEnableBloom(cfg.enableBloom)
     if (cfg.lightIntensity != null) setLightIntensity(cfg.lightIntensity)
+    if (cfg.showRoom != null) setShowRoom(cfg.showRoom)
   }
 
   // Pure snapshot of the shareable/save-able config subset. The same
@@ -194,6 +197,7 @@ function App() {
     autoOrbit,
     enableBloom,
     lightIntensity,
+    showRoom,
   })
 
   // Colors
@@ -224,6 +228,10 @@ function App() {
   // Camera
   const [autoOrbit, setAutoOrbit] = useState(_initial('autoOrbit'))
 
+  // The shelf and framed pieces around the mirror. On by default: they give
+  // the wall a scale. Off for a clean product view.
+  const [showRoom, setShowRoom] = useState(_initial('showRoom'))
+
   // Light intensity multiplier applied on top of the per-hue
   // compensation curve. 1.0 = the tuned baseline; users can dim or
   // crank for the look they want.
@@ -250,6 +258,7 @@ function App() {
     setReflectionDepth(DEFAULTS.reflectionDepth)
     setAutoOrbit(DEFAULTS.autoOrbit)
     setLightIntensity(DEFAULTS.lightIntensity)
+    setShowRoom(DEFAULTS.showRoom)
   }
 
   // Performance settings
@@ -279,6 +288,7 @@ function App() {
       enableBloom,
       // Was missing, so a shared link silently lost its light intensity.
       lightIntensity,
+      showRoom,
     })
     const newHash = `${HASH_PREFIX}${encoded}`
     if (window.location.hash !== newHash) {
@@ -302,6 +312,7 @@ function App() {
     autoOrbit,
     enableBloom,
     lightIntensity,
+    showRoom,
   ])
 
   // Lights. This app is framed by billwhite.me, which has a Lights switch.
@@ -522,6 +533,7 @@ function App() {
             reflectionDepth={reflectionDepth}
             autoOrbit={autoOrbit}
             onUserOrbitStart={() => setAutoOrbit(false)}
+            showRoom={showRoom}
             edgeThickness={edgeThickness}
             lightIntensity={lightIntensity}
           />
@@ -623,6 +635,8 @@ function App() {
         onLightIntensityChange={setLightIntensity}
         enableBloom={enableBloom}
         onEnableBloomChange={setEnableBloom}
+        showRoom={showRoom}
+        onShowRoomChange={setShowRoom}
         onExportClick={handleExportClick}
         defaults={DEFAULTS}
         onResetAll={handleResetAll}

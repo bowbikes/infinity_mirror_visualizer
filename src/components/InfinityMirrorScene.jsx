@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { OrbitControls } from '@react-three/drei'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import InfinityMirrorBox from './InfinityMirrorBox'
+import Wall from './Wall'
+import RoomDecor from './RoomDecor'
 
 /**
  * InfinityMirrorScene - Main 3D scene containing the mirror, wall, lighting, and camera
@@ -26,6 +28,7 @@ export default function InfinityMirrorScene({
   reflectionDepth,
   autoOrbit,
   onUserOrbitStart,
+  showRoom = true,
   edgeThickness,
   lightIntensity = 1.0,
 }) {
@@ -42,11 +45,35 @@ export default function InfinityMirrorScene({
     if (autoOrbit) userTookOverRef.current = false
   }, [autoOrbit])
 
-  // Calculate wall dimensions based on frame size
+  // Frame size in scene units (1 unit = 10 mm)
   const frameWidthUnits = frameWidthMm / 10
   const frameHeightUnits = frameHeightMm / 10
-  const wallPadding = 25 // units of padding around the frame
-  const wallSegmentSize = 70 // size of wall segments beyond the frame
+
+  // How far back the camera has to sit for the mirror (and a little of the
+  // wall around it) to fit the viewport. The distance used to be fixed, which
+  // cut the sides off the mirror on a phone held upright. 50 degree vertical
+  // field of view, so half of it is 25.
+  const { camera, size } = useThree()
+  const aspect = size.width / Math.max(1, size.height)
+  const TAN_HALF_FOV = Math.tan((25 * Math.PI) / 180)
+  const fitDistance = Math.min(
+    170,
+    Math.max(
+      80,
+      (frameWidthUnits / 2 + 8) / (TAN_HALF_FOV * aspect),
+      (frameHeightUnits / 2 + 14) / TAN_HALF_FOV
+    )
+  )
+  const fitDistanceRef = useRef(fitDistance)
+  fitDistanceRef.current = fitDistance
+
+  // Start head-on at that distance. Only on mount: after that the camera
+  // belongs to the auto-orbit or to the visitor.
+  useEffect(() => {
+    camera.position.set(0, 0, fitDistanceRef.current)
+    camera.lookAt(0, 0, 0)
+    orbitControlsRef.current?.update?.()
+  }, [camera])
 
   // Auto-orbit, smooth rotation around the Z axis at one full turn / 10s.
   useFrame((state, delta) => {
@@ -59,7 +86,7 @@ export default function InfinityMirrorScene({
     const rotationSpeed = (Math.PI * 2) / 10
     orbitTimeRef.current += delta * rotationSpeed
 
-    const radius = 80
+    const radius = fitDistanceRef.current
     const angleFromWall = (65 * Math.PI) / 180
     const x = radius * Math.cos(angleFromWall) * Math.cos(orbitTimeRef.current)
     const y = radius * Math.cos(angleFromWall) * Math.sin(orbitTimeRef.current)
@@ -100,47 +127,23 @@ export default function InfinityMirrorScene({
       <directionalLight position={[5, 5, 5]} intensity={1.0} />
       <directionalLight position={[-5, 5, 5]} intensity={0.6} />
 
-      {/* Wall behind the mirror - 4 rectangles around the frame opening */}
-      {/* Calculate total wall dimensions */}
-      {/* Top section - positioned above the frame */}
-      <mesh position={[0, frameHeightUnits / 2 + wallSegmentSize / 2, 0]}>
-        <planeGeometry args={[frameWidthUnits + wallSegmentSize * 2, wallSegmentSize]} />
-        <meshStandardMaterial
-          color={wallColor}
-          roughness={0.9}
-          metalness={0.1}
-        />
-      </mesh>
+      {/* The wall: one seamless surface with a hole for the mirror, a light
+          falloff, and the frame's contact shadow. */}
+      <Wall
+        frameWidthUnits={frameWidthUnits}
+        frameHeightUnits={frameHeightUnits}
+        wallColor={wallColor}
+      />
 
-      {/* Bottom section - positioned below the frame */}
-      <mesh position={[0, -(frameHeightUnits / 2 + wallSegmentSize / 2), 0]}>
-        <planeGeometry args={[frameWidthUnits + wallSegmentSize * 2, wallSegmentSize]} />
-        <meshStandardMaterial
-          color={wallColor}
-          roughness={0.9}
-          metalness={0.1}
+      {/* A shelf and two quiet framed pieces, for scale. Tinted from the wall
+          colour; switchable from the panel. */}
+      {showRoom && (
+        <RoomDecor
+          frameWidthUnits={frameWidthUnits}
+          frameHeightUnits={frameHeightUnits}
+          wallColor={wallColor}
         />
-      </mesh>
-
-      {/* Left section - only covers the height of the frame (no overlap with top/bottom) */}
-      <mesh position={[-(frameWidthUnits / 2 + wallSegmentSize / 2), 0, 0]}>
-        <planeGeometry args={[wallSegmentSize, frameHeightUnits]} />
-        <meshStandardMaterial
-          color={wallColor}
-          roughness={0.9}
-          metalness={0.1}
-        />
-      </mesh>
-
-      {/* Right section - only covers the height of the frame (no overlap with top/bottom) */}
-      <mesh position={[frameWidthUnits / 2 + wallSegmentSize / 2, 0, 0]}>
-        <planeGeometry args={[wallSegmentSize, frameHeightUnits]} />
-        <meshStandardMaterial
-          color={wallColor}
-          roughness={0.9}
-          metalness={0.1}
-        />
-      </mesh>
+      )}
 
       {/* Infinity Mirror Box */}
       <InfinityMirrorBox
