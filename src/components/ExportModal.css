@@ -8,7 +8,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  /* Above the info popover (1060/1080), so a dialog is never half-covered. */
+  z-index: 1100;
   padding: 20px;
 }
 

@@ -104,8 +104,8 @@ export default function InfoPopover() {
           <span>Width, height, depth and how many reflections to draw.</span>
         </li>
         <li>
-          <strong>Export</strong>
-          <span>Download the design bundle, or copy a link that restores it.</span>
+          <strong>Order</strong>
+          <span>Send the design to be made, download the bundle, or copy a link that restores it.</span>
         </li>
       </ul>
       <div className="info-brand">

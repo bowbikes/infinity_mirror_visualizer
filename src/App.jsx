@@ -13,8 +13,10 @@ import {
   captureCanvasSnapshot,
   createExportZip,
   downloadZipFile,
-  sendToManufacturer
+  sendToManufacturer,
+  sendDesignOrder
 } from './utils/exportUtils'
+import OrderModal from './components/OrderModal'
 
 /**
  * Main App Component
@@ -90,6 +92,12 @@ const LIGHTS_ORIGINS = [
   'https://billwhite-me.pages.dev',
   'http://localhost:4321',
 ]
+
+// Where "Order this design" sends the design: an n8n webhook that logs the
+// request, emails Bill the ZIP and opens an unsent Shopify draft order for the
+// Layered Logic shop. Its CORS list must include this app's origin.
+const ORDER_ENDPOINT =
+  import.meta.env.VITE_ORDER_ENDPOINT || 'https://n8n.billwhitedesign.com/webhook/mirror-design'
 
 // Single source of truth for every starting value. Used both for useState
 // init and for the "Reset all" button. Adding a new control? Add its
@@ -384,6 +392,69 @@ function App() {
     }
   }
 
+  // Order this design: the same ZIP as Export, sent to the shop's order desk.
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false)
+  const hasCustomArt = shapeType === 'custom' && Boolean(customSvgPath)
+
+  const handleOrderSubmit = async (customerInfo) => {
+    try {
+      const config = serializeConfiguration({
+        selectedPreset,
+        shapeType,
+        customSvgPath,
+        frameWidth,
+        frameHeight,
+        units,
+        wallColor,
+        frameColor,
+        lightColor,
+        frameDepthMm,
+        iconScale,
+        iconRotation,
+        iconPositionX,
+        iconPositionY,
+        edgeThickness,
+        reflectionDepth,
+        autoOrbit,
+        enableBloom,
+        lightIntensity,
+      })
+      const canvas = canvasRef.current?.querySelector('canvas')
+      const snapshot = await captureCanvasSnapshot(canvas)
+      const zipBlob = await createExportZip(config, snapshot, customerInfo, customSvgPath)
+
+      // Which site framed us (billwhite.me, the shop), for Bill's records only.
+      let source = ''
+      try {
+        source = document.referrer ? new URL(document.referrer).origin : ''
+      } catch {
+        source = ''
+      }
+
+      return await sendDesignOrder(
+        zipBlob,
+        {
+          customerName: customerInfo.name,
+          customerEmail: customerInfo.email,
+          notes: customerInfo.notes,
+          company: customerInfo.company,
+          widthMm: frameWidth,
+          heightMm: frameHeight,
+          preset: hasCustomArt ? 'custom' : selectedPreset,
+          hasArt: hasCustomArt,
+          // The hash is kept in sync with the controls, so this reopens the
+          // design (minus any custom art, which travels in the ZIP).
+          viewUrl: window.location.href,
+          source,
+        },
+        ORDER_ENDPOINT
+      )
+    } catch (error) {
+      console.error('Order build failed:', error)
+      return { ok: false, error: 'Could not package your design. Please try again.' }
+    }
+  }
+
   // Export handlers
   const handleExportClick = () => {
     setIsExportModalOpen(true)
@@ -397,6 +468,9 @@ function App() {
         selectedPreset,
         shapeType,
         customSvgPath,
+        frameWidth,
+        frameHeight,
+        units,
         wallColor,
         frameColor,
         lightColor,
@@ -442,6 +516,9 @@ function App() {
         selectedPreset,
         shapeType,
         customSvgPath,
+        frameWidth,
+        frameHeight,
+        units,
         wallColor,
         frameColor,
         lightColor,
@@ -554,7 +631,7 @@ function App() {
 
       {/* "Drag to orbit" nudge: bottom-center over the canvas. Hidden
           while a modal is open so it doesn't float over the dialog. */}
-      {!isCustomArtModalOpen && !isExportModalOpen && <OrbitHint orbiting={autoOrbit} />}
+      {!isCustomArtModalOpen && !isExportModalOpen && !isOrderModalOpen && <OrbitHint orbiting={autoOrbit} />}
 
       {/* About card / Layered Logic brand corner. Auto-dismisses to a
           small ⓘ button after the user closes it (sticky via
@@ -638,6 +715,7 @@ function App() {
         showRoom={showRoom}
         onShowRoomChange={setShowRoom}
         onExportClick={handleExportClick}
+        onOrderClick={() => setIsOrderModalOpen(true)}
         defaults={DEFAULTS}
         onResetAll={handleResetAll}
         onCopyShareLink={handleCopyShareLink}
@@ -662,6 +740,13 @@ function App() {
         onSendToManufacturer={handleSendToManufacturer}
         canSendToManufacturer={Boolean(import.meta.env.VITE_MANUFACTURER_ENDPOINT)}
         isProcessing={isExporting}
+      />
+
+      <OrderModal
+        isOpen={isOrderModalOpen}
+        onClose={() => setIsOrderModalOpen(false)}
+        onSubmit={handleOrderSubmit}
+        summary={{ widthMm: frameWidth, heightMm: frameHeight, preset: selectedPreset, hasArt: hasCustomArt }}
       />
     </div>
   )

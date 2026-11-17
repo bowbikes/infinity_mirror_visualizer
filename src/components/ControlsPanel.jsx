@@ -159,6 +159,7 @@ export default function ControlsPanel({
   showRoom,
   onShowRoomChange,
   onExportClick,
+  onOrderClick,
   defaults,
   onResetAll,
   onCopyShareLink,
@@ -497,12 +498,30 @@ export default function ControlsPanel({
         />
       </div>
 
-      {/* Export Button */}
+      {/* Order + Export */}
       <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Export</h3>
+        <h3 style={styles.sectionTitle}>Order or save</h3>
+        {onOrderClick && (
+          <>
+            <button
+              type="button"
+              onClick={onOrderClick}
+              style={styles.exportButton}
+            >
+              Order this design
+            </button>
+            <div style={{ ...styles.exportNote, marginBottom: '14px' }}>
+              <small>
+                Made to order in Seattle. I check your design, then send a
+                Shopify invoice from layeredlogic.cc. Nothing is charged until
+                you pay it.
+              </small>
+            </div>
+          </>
+        )}
         <button
           onClick={onExportClick}
-          style={styles.exportButton}
+          style={styles.shareLinkButton}
         >
           Save & Export Design
         </button>

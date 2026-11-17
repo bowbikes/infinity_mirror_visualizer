@@ -69,7 +69,7 @@ const CUSTOM_SVG_FILENAME = 'custom-icon.svg';
 export function serializeConfiguration(state) {
   const hasCustomSvg = state.customSvgPath && state.shapeType === 'custom';
   return {
-    version: '1.1.0',
+    version: '1.2.0',
     timestamp: new Date().toISOString(),
 
     icon: {
@@ -93,6 +93,11 @@ export function serializeConfiguration(state) {
     },
 
     mirror: {
+      // Outer frame size in millimetres. Was missing before 1.2.0, so an
+      // export could not say how big a mirror the customer had designed.
+      frameWidthMm: state.frameWidth,
+      frameHeightMm: state.frameHeight,
+      displayUnits: state.units,
       frameDepthMm: state.frameDepthMm,
       reflectionDepth: state.reflectionDepth,
     },
@@ -203,6 +208,38 @@ export async function sendToManufacturer(zipBlob, customerInfo, manufacturerEndp
   } catch (error) {
     console.error('Error sending to manufacturer:', error);
     return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Sends a design order (the export ZIP plus the order fields) to the order
+ * endpoint (an n8n webhook that logs it, emails Bill the ZIP and opens an
+ * unsent Shopify draft order). A plain multipart POST with no custom headers,
+ * so the browser sends it without a CORS preflight.
+ *
+ * Resolves to { ok: true, ref } or { ok: false, error } and never throws: the
+ * order modal shows the error text as-is, so every message here is written
+ * for the customer.
+ */
+export async function sendDesignOrder(zipBlob, fields, endpoint) {
+  const formData = new FormData();
+  formData.append('file', zipBlob, 'design.zip');
+  for (const [key, value] of Object.entries(fields)) {
+    formData.append(key, value == null ? '' : String(value));
+  }
+  try {
+    const response = await fetch(endpoint, { method: 'POST', body: formData });
+    if (!response.ok) {
+      return { ok: false, error: `The order desk answered with an error (${response.status}). Please try again in a minute.` };
+    }
+    const data = await response.json().catch(() => null);
+    if (!data || data.ok !== true) {
+      return { ok: false, error: (data && data.error) || 'The order did not go through. Please try again.' };
+    }
+    return { ok: true, ref: data.ref || '' };
+  } catch (error) {
+    console.error('Order send failed:', error);
+    return { ok: false, error: 'Could not reach the order desk. Check your connection and try again.' };
   }
 }
 
