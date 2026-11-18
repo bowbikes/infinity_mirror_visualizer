@@ -163,6 +163,7 @@ export default function ControlsPanel({
   defaults,
   onResetAll,
   onCopyShareLink,
+  onPresetSaved,
   currentConfig,
   onApplyConfig,
 }) {
@@ -193,6 +194,7 @@ export default function ControlsPanel({
       <PresetsSection
         currentConfig={currentConfig}
         onApplyConfig={onApplyConfig}
+        onSaved={onPresetSaved}
       />
 
       {/* Icon Selection */}

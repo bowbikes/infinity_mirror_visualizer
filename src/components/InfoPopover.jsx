@@ -107,6 +107,10 @@ export default function InfoPopover() {
           <strong>Order</strong>
           <span>Send the design to be made, download the bundle, or copy a link that restores it.</span>
         </li>
+        <li>
+          <strong>Privacy</strong>
+          <span>Designs you settle on, save, share or order are counted anonymously so we can see what people like. Your art and details are never included.</span>
+        </li>
       </ul>
       <div className="info-brand">
         Built by{' '}

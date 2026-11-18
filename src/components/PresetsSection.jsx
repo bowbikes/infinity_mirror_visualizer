@@ -35,7 +35,7 @@ function persistStored(presets) {
   }
 }
 
-export default function PresetsSection({ currentConfig, onApplyConfig }) {
+export default function PresetsSection({ currentConfig, onApplyConfig, onSaved }) {
   const [presets, setPresets] = useState(loadStored)
   // 'idle' | 'naming', when naming, the input box is shown instead of
   // the Save button. Lets us avoid window.prompt (which is jarring,
@@ -66,6 +66,8 @@ export default function PresetsSection({ currentConfig, onApplyConfig }) {
         : [...presets, entry]
     if (persistStored(next)) {
       setPresets(next)
+      // The preset's name stays in this browser; only the design is reported.
+      onSaved?.(currentConfig)
     }
     setDraftName('')
     setStage('idle')

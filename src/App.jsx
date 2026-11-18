@@ -17,6 +17,7 @@ import {
   sendDesignOrder
 } from './utils/exportUtils'
 import OrderModal from './components/OrderModal'
+import { recordDesign, designOnly } from './utils/designEvents'
 
 /**
  * Main App Component
@@ -353,6 +354,7 @@ function App() {
   const handleCopyShareLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href)
+      recordDesign('share_link', buildCurrentConfig(), artInfo())
       return true
     } catch {
       return false
@@ -367,6 +369,10 @@ function App() {
   // Receive the preprocessed manufacturable black SVG from PreprocessPanel.
   // Flips to 'custom' shape so the 3D scene picks it up.
   const handlePreprocessed = (manufacturableSvg) => {
+    recordDesign('art_upload', { ...buildCurrentConfig(), selectedPreset: 'custom' }, {
+      used: true,
+      kb: Math.round((manufacturableSvg?.length || 0) / 1024),
+    })
     setCustomSvgPath(manufacturableSvg)
     setShapeType('custom')
     setSelectedPreset('custom')
@@ -395,6 +401,27 @@ function App() {
   // Order this design: the same ZIP as Export, sent to the shop's order desk.
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false)
   const hasCustomArt = shapeType === 'custom' && Boolean(customSvgPath)
+
+  // Design telemetry (see utils/designEvents.js): never the art, only
+  // whether it is in use and how big it is.
+  function artInfo() {
+    return hasCustomArt
+      ? { used: true, kb: Math.round(customSvgPath.length / 1024) }
+      : { used: false }
+  }
+
+  // "settle": a design someone changed and then left alone for 20 s is a
+  // design they made, even if they never press a button. The design the page
+  // opened with (defaults or a shared link) does not count until it changes.
+  const currentDesignKey = JSON.stringify(designOnly(buildCurrentConfig())) + (hasCustomArt ? '|art' : '')
+  const openingDesignKey = useRef(currentDesignKey)
+  useEffect(() => {
+    if (currentDesignKey === openingDesignKey.current) return
+    const t = setTimeout(() => recordDesign('settle', buildCurrentConfig(), artInfo()), 20000)
+    return () => clearTimeout(t)
+    // buildCurrentConfig/artInfo read the same state the key is built from.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentDesignKey])
 
   const handleOrderSubmit = async (customerInfo) => {
     try {
@@ -431,7 +458,7 @@ function App() {
         source = ''
       }
 
-      return await sendDesignOrder(
+      const result = await sendDesignOrder(
         zipBlob,
         {
           customerName: customerInfo.name,
@@ -449,6 +476,8 @@ function App() {
         },
         ORDER_ENDPOINT
       )
+      if (result.ok) recordDesign('order', buildCurrentConfig(), artInfo())
+      return result
     } catch (error) {
       console.error('Order build failed:', error)
       return { ok: false, error: 'Could not package your design. Please try again.' }
@@ -496,6 +525,7 @@ function App() {
       // Download the file
       const filename = `infinity-mirror-${customerInfo.name?.replace(/\s+/g, '-') || 'config'}-${Date.now()}.zip`
       downloadZipFile(zipBlob, filename)
+      recordDesign('export', buildCurrentConfig(), artInfo())
 
       // Close modal
       setIsExportModalOpen(false)
@@ -719,6 +749,7 @@ function App() {
         defaults={DEFAULTS}
         onResetAll={handleResetAll}
         onCopyShareLink={handleCopyShareLink}
+        onPresetSaved={(cfg) => recordDesign('save_preset', cfg, artInfo())}
         currentConfig={buildCurrentConfig()}
         onApplyConfig={handleApplyConfig}
       />
